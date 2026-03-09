@@ -71,11 +71,12 @@ onAuthStateChanged(auth, (user) => {
         if (!currentUser) return alert("Silakan login terlebih dahulu!");
         
         const tgl = document.getElementById('inputTanggal').value;
+        
         const ket = document.getElementById('inputKeterangan').value;
         const deb = cleanNumber(document.getElementById('inputDebet').value);
         const kre = cleanNumber(document.getElementById('inputKredit').value);
 
-        if (!tgl || !ket) return alert("Tanggal dan Keterangan wajib diisi!");
+        if (tgl.length < 10) return alert("Format tanggal salah! Gunakan DD/MM/YYYY (Contoh: 01/12/2024)");
 
         try {
             await addDoc(collection(dbCloud, `users/${currentUser.uid}/transaksi`), {
@@ -126,7 +127,7 @@ onAuthStateChanged(auth, (user) => {
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Tanggal</label>
-                    <input type="date" id="inputTanggal" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                    <input type="text" id="inputTanggal" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Keterangan</label>
@@ -152,9 +153,6 @@ onAuthStateChanged(auth, (user) => {
 
         <div id="areaLaporan" class="bg-white">
             <h1 class="text-xl md:text-2xl font-semibold text-center mb-6 uppercase tracking-wider text-green-900">Laporan Keuangan Tk Ananda</h1>
-        <div class="no-print flex justify-center mb-4">
-            <button id="authBtn"></button>
-        </div>
             <div class="table-container">
                 <table class="w-full border-collapse border-2 border-green-800 min-w-[600px] lg:min-w-full">
                     <thead>
@@ -199,6 +197,17 @@ onAuthStateChanged(auth, (user) => {
             input.value = new Intl.NumberFormat('id-ID').format(value);
         }
     }
+    // Fungsi agar orang tua bisa ketik 01122024 langsung jadi 01/12/2024
+function formatTanggal(input) {
+    let v = input.value.replace(/\D/g, '').slice(0, 8);
+    if (v.length >= 5) {
+        input.value = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
+    } else if (v.length >= 3) {
+        input.value = `${v.slice(0, 2)}/${v.slice(2)}`;
+    } else {
+        input.value = v;
+    }
+}
 
     // 3. Fungsi Membersihkan Titik untuk Perhitungan Matematika
     function cleanNumber(str) {
@@ -242,16 +251,30 @@ onAuthStateChanged(auth, (user) => {
     }
 
     // 5. Fungsi Cetak PDF
-    function downloadPDF() {
-        const element = document.getElementById('areaLaporan');
-        html2pdf().from(element).set({
-            margin: 8,
-            filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
-            html2canvas: { scale: 3 },
-            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-        }).save();
-    }
-    </script>
-   
+    // 5. Fungsi Cetak PDF (Versi Perbaikan)
+function downloadPDF() {
+    const element = document.getElementById('areaLaporan');
+    
+    // Opsi konfigurasi agar tidak terpotong
+    const opt = {
+        margin: [10, 5, 10, 5], // margin: [atas, kiri, bawah, kanan] dalam mm
+        filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { 
+            scale: 2, // Scale 2 sudah cukup jernih dan ukuran file tidak terlalu bengkak
+            useCORS: true, 
+            letterRendering: true 
+        },
+        jsPDF: { 
+            unit: 'mm', 
+            format: 'a4', 
+            orientation: 'landscape' // Diubah ke landscape agar tabel 5 kolom tidak terpotong
+        }
+    };
+
+    // Jalankan konversi
+    html2pdf().set(opt).from(element).save();
+}
+   </script>
 </body>
 </html>
