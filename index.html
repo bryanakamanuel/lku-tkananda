@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tk Ananda</title>
+
+    <link rel="icon" type="image/jpg" href="pic/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+    import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+    // Konfigurasi dari gambar yang Anda berikan
+    const firebaseConfig = {
+      apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
+      authDomain: "lku-tk-ananda.firebaseapp.com",
+      projectId: "lku-tk-ananda",
+      storageBucket: "lku-tk-ananda.firebasestorage.app",
+      messagingSenderId: "310516809206",
+      appId: "1:310516809206:web:f545e45967fccff5ce1bd7",
+      measurementId: "G-T6YMGQB0X7"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const dbCloud = getFirestore(app);
+    const provider = new GoogleAuthProvider();
+
+    let currentUser = null;
+
+    // Fungsi Login & Logout agar bisa diakses tombol
+    window.login = () => signInWithPopup(auth, provider);
+    window.logout = () => signOut(auth);
+
+    // Pantau Status Login
+    // Pantau Status Login
+onAuthStateChanged(auth, (user) => {
+    const authBtn = document.getElementById('authBtn');
+    if (user) {
+        currentUser = user;
+        authBtn.innerHTML = `👋 Hai, ${user.displayName.split(' ')[0]} (Keluar)`;
+        authBtn.onclick = window.logout;
+        // Gaya saat sudah login (merah lembut)
+        authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 transition cursor-pointer border border-red-100 px-2 py-1 rounded";
+        loadDataCloud();
+    } else {
+        currentUser = null;
+        authBtn.innerHTML = "Login Google";
+        authBtn.onclick = window.login;
+        // Gaya saat belum login (biru mencolok)
+        authBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-md cursor-pointer";
+        renderTabel([]); 
+    }
+});
+    // Ambil Data Real-time
+    function loadDataCloud() {
+        const q = query(collection(dbCloud, `users/${currentUser.uid}/transaksi`), orderBy("createdAt", "asc"));
+        onSnapshot(q, (snapshot) => {
+            const data = [];
+            snapshot.forEach(doc => data.push({ id: doc.id, ...doc.data() }));
+            window.db = data; // Simpan ke variabel global db
+            renderTabel();
+        });
+    }
+
+    // Timpa fungsi tambahData agar ke Firebase
+    window.tambahData = async () => {
+        if (!currentUser) return alert("Silakan login terlebih dahulu!");
+        
+        const tgl = document.getElementById('inputTanggal').value;
+        const ket = document.getElementById('inputKeterangan').value;
+        const deb = cleanNumber(document.getElementById('inputDebet').value);
+        const kre = cleanNumber(document.getElementById('inputKredit').value);
+
+        if (!tgl || !ket) return alert("Tanggal dan Keterangan wajib diisi!");
+
+        try {
+            await addDoc(collection(dbCloud, `users/${currentUser.uid}/transaksi`), {
+                tanggal: tgl,
+                keterangan: ket,
+                debet: deb,
+                kredit: kre,
+                createdAt: Date.now()
+            });
+            document.getElementById('inputKeterangan').value = "";
+            document.getElementById('inputDebet').value = "";
+            document.getElementById('inputKredit').value = "";
+        } catch (e) { alert("Error: " + e.message); }
+    };
+
+    // Timpa fungsi hapusSemua agar ke Firebase
+    window.hapusSemua = async () => {
+        if (!currentUser) return;
+        if (!confirm("Hapus semua data di Cloud secara permanen?")) return;
+        const q = await getDocs(collection(dbCloud, `users/${currentUser.uid}/transaksi`));
+        q.forEach(async (d) => await deleteDoc(d.ref));
+    };
+</script>
+    <style>
+        /* Gaya agar tabel bisa di-scroll secara horizontal di HP */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Penyesuaian font di layar kecil agar tidak terlalu memakan tempat */
+        @media (max-width: 640px) {
+            table { font-size: 0.8rem; }
+            th, td { padding: 0.5rem 0.25rem !important; }
+        }
+        @media print { .no-print { display: none; } }
+    </style>
+</head>
+<body class="bg-gray-100 p-2 md:p-10">
+    <div class="max-w-5xl mx-auto bg-white p-4 md:p-8 shadow-xl rounded-lg relative">
+        
+        <div class="absolute top-4 right-4 no-print">
+            <button id="authBtn"></button>
+        </div>
+
+        <div class="no-print border-b pb-6 mb-6">
+            <h2 class="text-xl font-bold mb-4 text-blue-800">Input Transaksi Baru</h2>
+            ```
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Tanggal</label>
+                    <input type="date" id="inputTanggal" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Keterangan</label>
+                    <input type="text" id="inputKeterangan" placeholder="Contoh: Beli ATK" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Debet (Masuk)</label>
+                    <input type="text" id="inputDebet" placeholder="0" onkeyup="formatInput(this)" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                </div>
+                <div class="flex flex-col">
+                    <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Kredit (Keluar)</label>
+                    <input type="text" id="inputKredit" placeholder="0" onkeyup="formatInput(this)" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                </div>
+                
+                <div class="flex items-end">
+                    <button onclick="tambahData()" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition shadow-md lg:h-[42px]">
+                        Simpan
+                    </button>
+                </div>
+            </div>
+            <p class="text-[10px] text-gray-500 mt-2 italic">*Kosongkan Debet jika hanya ingin mengisi Kredit, dan sebaliknya.</p>
+        </div>
+
+        <div id="areaLaporan" class="bg-white">
+            <h1 class="text-xl md:text-2xl font-semibold text-center mb-6 uppercase tracking-wider text-green-900">Laporan Keuangan Tk Ananda</h1>
+        <div class="no-print flex justify-center mb-4">
+            <button id="authBtn"></button>
+        </div>
+            <div class="table-container">
+                <table class="w-full border-collapse border-2 border-green-800 min-w-[600px] lg:min-w-full">
+                    <thead>
+                        <tr class="bg-green-600 text-white border-b-2 border-green-800">
+                            <th class="border border-green-800 p-2 w-12 text-center">No</th>
+                            <th class="border border-green-800 p-2 text-center w-28">Tanggal</th>
+                            <th class="border border-green-800 p-2 text-center">Keterangan</th>
+                            <th class="border border-green-800 p-2 text-center w-28">Debet</th>
+                            <th class="border border-green-800 p-2 text-center w-28">Kredit</th>
+                            <th class="border border-green-800 p-2 text-center w-32">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bodyTabel">
+                    </tbody>
+                    <tfoot id="footerTabel" class="bg-green-100 font-bold border-t-2 border-green-800 text-green-900">
+                    </tfoot>
+                </table>
+            </div>
+            </div>
+
+        <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center no-print">
+            <div class="flex gap-2 w-full sm:w-auto">
+                <button onclick="downloadPDF()" class="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2 rounded shadow-lg hover:bg-red-700 flex items-center justify-center gap-2">
+                    <span>📄</span> PDF
+                </button>
+                <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-700 text-white px-6 py-2 rounded shadow-lg hover:bg-gray-800 flex items-center justify-center gap-2">
+                    <span>🖨️</span> Print / Foto
+                </button>
+            </div>
+            <button onclick="hapusSemua()" class="text-red-400 text-xs hover:text-red-600 hover:underline transition">Hapus Data Permanen</button>
+        </div>
+    </div>
+
+   <script>
+    // 1. Inisialisasi variabel global agar bisa diisi oleh Firebase di atas
+    window.db = []; 
+
+    // 2. Fungsi Format Ribuan saat Mengetik
+    function formatInput(input) {
+        let value = input.value.replace(/[^0-9]/g, "");
+        if (value) {
+            input.value = new Intl.NumberFormat('id-ID').format(value);
+        }
+    }
+
+    // 3. Fungsi Membersihkan Titik untuk Perhitungan Matematika
+    function cleanNumber(str) {
+        if (!str) return 0;
+        let num = str.toString().replace(/\./g, "");
+        return parseFloat(num) || 0;
+    }
+
+    // 4. Render Tabel (Data disuplai oleh Firebase)
+    function renderTabel() {
+        const body = document.getElementById('bodyTabel');
+        const footer = document.getElementById('footerTabel');
+        if (!body || !footer) return;
+
+        body.innerHTML = "";
+        let saldo = 0, totalD = 0, totalK = 0;
+
+        window.db.forEach((item, i) => {
+            saldo = saldo + item.debet - item.kredit;
+            totalD += item.debet;
+            totalK += item.kredit;
+
+            body.innerHTML += `
+                <tr class="odd:bg-white even:bg-green-50/30 hover:bg-blue-50 transition-colors">
+                    <td class="border border-green-800 p-2 text-center">${i + 1}</td>
+                    <td class="border border-green-800 p-2 text-center text-[10px] md:text-sm">${item.tanggal}</td>
+                    <td class="border border-green-800 p-2">${item.keterangan}</td>
+                    <td class="border border-green-800 p-2 text-right text-blue-700 font-medium">${item.debet > 0 ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
+                    <td class="border border-green-800 p-2 text-right text-red-600 font-medium">${item.kredit > 0 ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
+                    <td class="border border-green-800 p-2 text-right font-bold bg-gray-50">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+                </tr>`;
+        });
+
+        footer.innerHTML = `
+            <tr>
+                <td colspan="3" class="border border-green-800 p-3 text-center uppercase tracking-tighter">Jumlah</td>
+                <td class="border border-green-800 p-3 text-right text-blue-800">${new Intl.NumberFormat('id-ID').format(totalD)}</td>
+                <td class="border border-green-800 p-3 text-right text-red-800">${new Intl.NumberFormat('id-ID').format(totalK)}</td>
+                <td class="border border-green-800 p-3 text-right bg-green-200 shadow-inner">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+            </tr>`;
+    }
+
+    // 5. Fungsi Cetak PDF
+    function downloadPDF() {
+        const element = document.getElementById('areaLaporan');
+        html2pdf().from(element).set({
+            margin: 8,
+            filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
+            html2canvas: { scale: 3 },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        }).save();
+    }
+    </script>
+   
+</body>
+</html>
