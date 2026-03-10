@@ -51,7 +51,7 @@ onAuthStateChanged(auth, (user) => {
         authBtn.innerHTML = "Login Google";
         authBtn.onclick = window.login;
         // Gaya saat belum login (biru mencolok)
-        authBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-md cursor-pointer";
+        authBtn.className = "bg-blue-600 text-white px-4 py-4 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-md cursor-pointer";
         renderTabel([]); 
     }
 });
@@ -122,12 +122,13 @@ onAuthStateChanged(auth, (user) => {
         </div>
 
         <div class="no-print border-b pb-6 mb-6">
-            <h2 class="text-xl font-bold mb-4 text-blue-800">Input Transaksi Baru</h2>
-            ```
+          <div class="mb-6 flex justify-start">
+        <img src="pic/logo.png" alt="Logo TK Ananda" class="h-14 w-auto object-contain">
+    </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Tanggal</label>
-                    <input type="text" id="inputTanggal" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
+                   <input type="text" id="inputTanggal" onkeyup="formatTanggal(this)" placeholder="DD/MM/YYYY" maxlength="10" class="p-2 border rounded focus:ring-2 focus:ring-blue-400 outline-none w-full">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1 uppercase">Keterangan</label>
@@ -242,12 +243,21 @@ function formatTanggal(input) {
         });
 
         footer.innerHTML = `
-            <tr>
-                <td colspan="3" class="border border-green-800 p-3 text-center uppercase tracking-tighter">Jumlah</td>
-                <td class="border border-green-800 p-3 text-right text-blue-800">${new Intl.NumberFormat('id-ID').format(totalD)}</td>
-                <td class="border border-green-800 p-3 text-right text-red-800">${new Intl.NumberFormat('id-ID').format(totalK)}</td>
-                <td class="border border-green-800 p-3 text-right bg-green-200 shadow-inner">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
-            </tr>`;
+    <tr>
+        <td colspan="3" class="border border-green-800 p-3 text-center uppercase tracking-tighter font-bold">Jumlah</td>
+        
+        <td class="border border-green-800 p-3 text-right text-blue-800 font-bold">
+            ${new Intl.NumberFormat('id-ID').format(totalD)}
+        </td>
+        
+        <td class="border border-green-800 p-3 text-right text-red-800 font-bold">
+            ${new Intl.NumberFormat('id-ID').format(totalK)}
+        </td>
+        
+        <td class="border border-green-800 p-3 text-right bg-green-200 shadow-inner font-extrabold text-green-900">
+            ${new Intl.NumberFormat('id-ID').format(totalD - totalK)}
+        </td>
+    </tr>`;
     }
 
     // 5. Fungsi Cetak PDF
