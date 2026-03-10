@@ -273,11 +273,13 @@ function downloadPDF() {
     const opt = {
         margin: [10, 10, 10, 10], // margin: [atas, kiri, bawah, kanan] dalam mm
         filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 1 },
         html2canvas: { 
             scale: 3, // Scale 2 sudah cukup jernih dan ukuran file tidak terlalu bengkak
             useCORS: true, 
-            letterRendering: true 
+            logging: false,
+            letterRendering: true ,
+            width : element.scrollWidth
         },
         jsPDF: { 
             unit: 'mm', 
