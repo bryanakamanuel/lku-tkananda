@@ -271,7 +271,7 @@ function downloadPDF() {
     
     // Opsi konfigurasi agar tidak terpotong
     const opt = {
-        margin: [10, 10, 10, 10], // margin: [atas, kiri, bawah, kanan] dalam mm
+        margin: [10, 5, 10, 5], // margin: [atas, kiri, bawah, kanan] dalam mm
         filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
         image: { type: 'jpeg', quality: 1 },
         html2canvas: { 
@@ -279,7 +279,7 @@ function downloadPDF() {
             useCORS: true, 
             logging: false,
             letterRendering: true ,
-            width : element.scrollWidth
+            windowWidth: 1200
         },
         jsPDF: { 
             unit: 'mm', 
