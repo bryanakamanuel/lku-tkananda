@@ -6,6 +6,7 @@
     <title>Tk Ananda</title>
 
     <link rel="icon" type="image/jpg" href="pic/logo.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script type="module">
@@ -182,6 +183,9 @@ onAuthStateChanged(auth, (user) => {
                 <button onclick="window.print()" class="flex-1 sm:flex-none bg-gray-700 text-white px-6 py-2 rounded shadow-lg hover:bg-gray-800 flex items-center justify-center gap-2">
                     <span>🖨️</span> Print / Foto
                 </button>
+                <button onclick="downloadExcel()" class="flex-1 sm:flex-none bg-green-700 text-white px-6 py-2 rounded shadow-lg hover:bg-green-800 flex items-center justify-center gap-2">
+                    <span>📊</span> Excel
+                </button>
             </div>
             <button onclick="hapusSemua()" class="text-red-400 text-xs hover:text-red-600 hover:underline transition">Hapus Data Permanen</button>
         </div>
@@ -267,11 +271,11 @@ function downloadPDF() {
     
     // Opsi konfigurasi agar tidak terpotong
     const opt = {
-        margin: [10, 5, 10, 5], // margin: [atas, kiri, bawah, kanan] dalam mm
+        margin: [10, 10, 10, 10], // margin: [atas, kiri, bawah, kanan] dalam mm
         filename: 'Laporan_Keuangan_Tk_Ananda.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
-            scale: 2, // Scale 2 sudah cukup jernih dan ukuran file tidak terlalu bengkak
+            scale: 3, // Scale 2 sudah cukup jernih dan ukuran file tidak terlalu bengkak
             useCORS: true, 
             letterRendering: true 
         },
@@ -284,6 +288,44 @@ function downloadPDF() {
 
     // Jalankan konversi
     html2pdf().set(opt).from(element).save();
+}
+        function downloadExcel() {
+    // 1. Ambil data dari variabel global window.db
+    if (!window.db || window.db.length === 0) return alert("Tidak ada data untuk diunduh.");
+
+    // 2. Format data agar rapi di Excel
+    let saldoTemp = 0;
+    const dataExcel = window.db.map((item, i) => {
+        saldoTemp = saldoTemp + item.debet - item.kredit;
+        return {
+            "No": i + 1,
+            "Tanggal": item.tanggal,
+            "Keterangan": item.keterangan,
+            "Debet": item.debet,
+            "Kredit": item.kredit,
+            "Saldo": saldoTemp
+        };
+    });
+
+    // 3. Tambahkan baris total di paling bawah
+    const totalD = window.db.reduce((a, b) => a + b.debet, 0);
+    const totalK = window.db.reduce((a, b) => a + b.kredit, 0);
+    dataExcel.push({
+        "No": "",
+        "Tanggal": "",
+        "Keterangan": "TOTAL & SALDO AKHIR",
+        "Debet": totalD,
+        "Kredit": totalK,
+        "Saldo": totalD - totalK
+    });
+
+    // 4. Proses pembuatan file Excel
+    const worksheet = XLSX.utils.json_to_sheet(dataExcel);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
+
+    // 5. Download file
+    XLSX.writeFile(workbook, "Laporan_Keuangan_TK_Ananda.xlsx");
 }
    </script>
 </body>
