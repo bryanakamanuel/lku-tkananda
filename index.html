@@ -84,15 +84,15 @@
             } catch (e) { alert("Error: " + e.message); }
         };
 
-        window.hapusBaris = async (id) => {
-    // Cari data keterangan untuk konfirmasi agar tidak salah hapus
-    const item = window.db.find(d => d.id === id);
-    if (!confirm(`Hapus data: "${item.keterangan}"?`)) return;
-    
-    try {
+            window.hapusBaris = async (id) => {
+    // Cari data untuk konfirmasi nama keterangannya
+              const item = window.db.find(d => d.id === id);
+            if (!item || !confirm(`Hapus data "${item.keterangan}"?`)) return;
+            try {
         await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, id));
+        // Tabel akan update otomatis karena onSnapshot
     } catch (e) { 
-        alert("Gagal hapus: " + e.message); 
+        alert("Gagal menghapus: " + e.message); 
     }
 };
     </script>
@@ -149,6 +149,7 @@
                             <th class="border border-green-800 p-2 w-24 text-right">DEBET</th>
                             <th class="border border-green-800 p-2 w-24 text-right">KREDIT</th>
                             <th class="border border-green-800 p-2 w-28 text-right">SALDO</th>
+                            <th class="border border-green-800 p-2 w-8 no-print bg-green-700"></th> ```
                         </tr>
                     </thead>
                     <tbody id="bodyTabel" class="text-[11px] md:text-sm"></tbody>
@@ -203,7 +204,9 @@
                         <td class="border border-green-800 p-2 uppercase">${item.keterangan}</td>
                         <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
                         <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
-                        <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+                         <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+                        <td class="border border-green-800 p-2 text-center no-print">
+                        <button onclick="window.hapusBaris('${item.id}')" class="text-red-400 hover:text-red-600 font-bold px-1" title="Hapus Baris">✕</button> 
                     </tr>`;
             });
 
