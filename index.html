@@ -16,8 +16,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
             authDomain: "lku-tk-ananda.firebaseapp.com",
@@ -27,6 +26,7 @@
             appId: "1:310516809206:web:f545e45967fccff5ce1bd7",
             measurementId: "G-T6YMGQB0X7"
         };
+
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -42,7 +42,7 @@
             const authBtn = document.getElementById('authBtn');
             if (user) {
                 currentUser = user;
-                authBtn.innerHTML = `👋 Hai, ${user.displayName.split(' ')[0]} (Keluar)`;
+                authBtn.innerHTML = `👋 HALO, ${user.displayName.split(' ')[0]} (Keluar)`;
                 authBtn.onclick = window.logout;
                 authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 transition cursor-pointer border border-red-100 px-2 py-1 rounded";
                 loadDataCloud();
@@ -89,6 +89,15 @@
             const q = await getDocs(collection(dbCloud, `users/${currentUser.uid}/transaksi`));
             q.forEach(async (d) => await deleteDoc(d.ref));
         };
+        window.hapusBaris = async (id) => {
+    if (!confirm("Hapus baris ini?")) return;
+    try {
+        
+        await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, id));
+    } catch (e) { 
+        alert("Gagal hapus: " + e.message); 
+    }
+};
     </script>
 
     <style>
@@ -105,7 +114,7 @@
         <div class="absolute top-4 right-4 no-print">
             <button id="authBtn"></button>
         </div>
-
+        <p> halo kaka</p>
         <div class="no-print border-b pb-6 mb-6">
             <div class="mb-6"><img src="pic/logo.png" alt="Logo" class="h-14 w-auto object-contain"></div>
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
@@ -198,6 +207,9 @@
                         <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
                         <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
                         <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+                        <td class="border border-green-800 p-2 text-center no-print">
+                            <button onclick="hapusBaris('${item.id}')" class="text-red-500 hover:text-red-700 font-bold">✕</button>
+                        </td>
                     </tr>`;
             });
 
@@ -210,7 +222,7 @@
                 </tr>`;
         }
 
-        // FUNGSI PDF (PENGGANTI FPDF UNTUK JS)
+        // FUNGSI Pb (PENGGANTI FPDF UNTUK JS)
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('l', 'mm', 'a4'); // 'l' = Landscape
@@ -275,6 +287,7 @@
             XLSX.utils.book_append_sheet(wb, ws, "Laporan");
             XLSX.writeFile(wb, "Laporan_Keuangan_TK_Ananda.xlsx");
         }
+       
     </script>
 </body>
 </html>
