@@ -84,15 +84,12 @@
             } catch (e) { alert("Error: " + e.message); }
         };
 
-        window.hapusSemua = async () => {
-            if (!currentUser || !confirm("Hapus permanen semua data?")) return;
-            const q = await getDocs(collection(dbCloud, `users/${currentUser.uid}/transaksi`));
-            q.forEach(async (d) => await deleteDoc(d.ref));
-        };
         window.hapusBaris = async (id) => {
-    if (!confirm("Hapus baris ini?")) return;
+    // Cari data keterangan untuk konfirmasi agar tidak salah hapus
+    const item = window.db.find(d => d.id === id);
+    if (!confirm(`Hapus data: "${item.keterangan}"?`)) return;
+    
     try {
-        
         await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, id));
     } catch (e) { 
         alert("Gagal hapus: " + e.message); 
@@ -207,9 +204,6 @@
                         <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
                         <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
                         <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
-                        <td class="border border-green-800 p-2 text-center no-print">
-                            <button onclick="hapusBaris('${item.id}')" class="text-red-500 hover:text-red-700 font-bold">✕</button>
-                        </td>
                     </tr>`;
             });
 
