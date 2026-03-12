@@ -7,10 +7,9 @@
 
     <link rel="icon" type="image/jpg" href="pic/logo.png">
     
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
@@ -28,7 +27,6 @@
             measurementId: "G-T6YMGQB0X7"
         };
 
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const dbCloud = getFirestore(app);
@@ -45,13 +43,13 @@
                 currentUser = user;
                 authBtn.innerHTML = ` ${user.displayName.split(' ')[0]} (Keluar)`;
                 authBtn.onclick = window.logout;
-                authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 transition cursor-pointer border border-red-100 px-2 py-1 rounded";
+                authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 transition cursor-pointer border border-red-100 px-2 py-1 rounded whitespace-nowrap";
                 loadDataCloud();
             } else {
                 currentUser = null;
                 authBtn.innerHTML = "Login Google";
                 authBtn.onclick = window.login;
-                authBtn.className = "bg-blue-600 text-white px-4 py-4 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-md cursor-pointer";
+                authBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 transition shadow-md cursor-pointer whitespace-nowrap";
                 renderTabel([]); 
             }
         });
@@ -67,13 +65,13 @@
         }
 
         window.tambahData = async () => {
-            if (!currentUser) return alert("Silakan login!");
+            if (!currentUser) return Swal.fire("Akses Ditolak", "Silakan login terlebih dahulu!", "warning");
             const tgl = document.getElementById('inputTanggal').value;
             const ket = document.getElementById('inputKeterangan').value;
             const deb = cleanNumber(document.getElementById('inputDebet').value);
             const kre = cleanNumber(document.getElementById('inputKredit').value);
 
-            if (tgl.length < 10) return alert("Format tanggal DD/MM/YYYY!");
+            if (tgl.length < 10) return Swal.fire("Input Salah", "Format tanggal harus DD/MM/YYYY!", "info");
 
             try {
                 await addDoc(collection(dbCloud, `users/${currentUser.uid}/transaksi`), {
@@ -82,117 +80,115 @@
                 document.getElementById('inputKeterangan').value = "";
                 document.getElementById('inputDebet').value = "";
                 document.getElementById('inputKredit').value = "";
-            } catch (e) { alert("Error: " + e.message); }
+                
+            } catch (e) { Swal.fire("Error", e.message, "error"); }
         };
 
         window.hapusSemua = async () => {
-    if (!currentUser) return alert("Silakan login terlebih dahulu!");
-    if (!confirm("PERINGATAN: Semua data Anda akan dihapus permanen. Lanjutkan?")) return;
+            if (!currentUser) return Swal.fire("Akses Ditolak", "Silakan login terlebih dahulu!", "warning");
+            
+            const result = await Swal.fire({
+                title: 'Hapus Semua Data?',
+                text: "Semua data transaksi akan dihapus permanen dari sistem!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                cancelButtonColor: '#3085d6',
+                confirmButtonText: 'Ya, Hapus Semua',
+                cancelButtonText: 'Batal'
+            });
 
-    try {
-        const colRef = collection(dbCloud, `users/${currentUser.uid}/transaksi`);
-        const snapshot = await getDocs(colRef);
-        
-        // Proses hapus satu per satu di latar belakang
-        const promises = snapshot.docs.map(d => deleteDoc(d.ref));
-        await Promise.all(promises);
-        
-        alert("Semua data berhasil dihapus.");
-    } catch (e) {
-        alert("Gagal menghapus semua data: " + e.message);
-    }
-};
-            window.hapusBaris = async (id) => {
-    // Cari data untuk konfirmasi nama keterangannya
-              const item = window.db.find(d => d.id === id);
-            if (!item || !confirm(`Hapus data "${item.keterangan}"?`)) return;
+            if (result.isConfirmed) {
+                try {
+                    const colRef = collection(dbCloud, `users/${currentUser.uid}/transaksi`);
+                    const snapshot = await getDocs(colRef);
+                    const promises = snapshot.docs.map(d => deleteDoc(d.ref));
+                    await Promise.all(promises);
+                    Swal.fire('Terhapus!', 'Database transaksi telah dibersihkan.', 'success');
+                } catch (e) { Swal.fire("Gagal", e.message, "error"); }
+            }
+        };
+
+        window.hapusBaris = async (id) => {
+            const item = window.db.find(d => d.id === id);
+            if (!item) return;
+
+            const result = await Swal.fire({
+                title: 'Hapus Baris?',
+                text: `Yakin ingin menghapus "${item.keterangan}"?`,
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonColor: '#d33',
+                confirmButtonText: 'Hapus'
+            });
+
+            if (result.isConfirmed) {
+                try {
+                    await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, id));
+                } catch (e) { Swal.fire("Gagal", e.message, "error"); }
+            }
+        };
+
+        window.arsipkanData = async () => {
+            if (!currentUser || window.db.length === 0) return Swal.fire("Kosong", "Tidak ada data untuk diarsip!", "info");
+            
+            const { value: namaArsip } = await Swal.fire({
+                title: 'Pindahkan ke Arsip',
+                input: 'text',
+                inputLabel: 'Masukkan Nama Laporan (Contoh: Laporan Maret)',
+                inputPlaceholder: 'Nama Laporan...',
+                showCancelButton: true
+            });
+
+            if (!namaArsip) return;
+
+            Swal.fire({ title: 'Mengarsipkan...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
             try {
-        await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, id));
-        // Tabel akan update otomatis karena onSnapshot
-    } catch (e) { 
-        alert("Gagal menghapus: " + e.message); 
-    }
-};
-    window.arsipkanData = async () => {
-    if (!currentUser || window.db.length === 0) return alert("Tidak ada data untuk diarsip!");
-    
-    const namaArsip = prompt("Masukkan nama laporan (Contoh: Laporan Maret):");
-    if (!namaArsip) return;
+                await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { nama: namaArsip });
+                for (const item of window.db) {
+                    await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
+                        tanggal: item.tanggal, keterangan: item.keterangan, debet: item.debet, kredit: item.kredit, createdAt: item.createdAt || Date.now()
+                    });
+                    await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, item.id));
+                }
+                Swal.fire('Berhasil!', 'Data telah dipindahkan ke folder Arsip.', 'success');
+            } catch (e) { Swal.fire("Error", e.message, "error"); }
+        };
 
-    try {
-        // Baris ini sangat penting agar muncul di daftar arsip.html
-        await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { nama: namaArsip });
-
-        for (const item of window.db) {
-            // Simpan ke folder arsip
-            await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
-                tanggal: item.tanggal,
-                keterangan: item.keterangan,
-                debet: item.debet,
-                kredit: item.kredit,
-                createdAt: item.createdAt || Date.now()
-            });
-            // Hapus dari tabel utama
-            await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, item.id));
-        }
-        alert("Selesai! Data sudah pindah ke Arsip.");
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
-};
-    window.prosesSimpanRekapDariTabel = async () => {
-    if (!currentUser) return alert("Silakan login!");
-    
-    // 1. Tanya Tahun
-    const tahun = prompt("Masukkan Tahun Rekap (Contoh: 2024):");
-    if (!tahun) return;
-
-    const namaArsip = `REKAP TAHUNAN ${tahun}`;
-    
-    // 2. Ambil semua baris input dari area tabel yang kamu buat
-    // Pastikan di HTML kamu, baris tabelnya punya class "baris-rekap"
-    const semuaBaris = document.querySelectorAll('.baris-rekap');
-    
-    if (semuaBaris.length === 0) {
-        return alert("Tabel input tidak ditemukan. Pastikan class 'baris-rekap' sudah dipasang.");
-    }
-
-    try {
-        // A. Buat Folder Arsip Utama
-        await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { 
-            nama: namaArsip,
-            tanggalArsip: Date.now(),
-            tipe: "TAHUNAN"
-        });
-
-        // B. Loop setiap baris untuk mengambil angka Debet & Kredit
-        for (let i = 0; i < semuaBaris.length; i++) {
-            const baris = semuaBaris[i];
-            const bulan = baris.querySelector('.nama-bulan').innerText;
+        window.prosesSimpanRekapDariTabel = async () => {
+            if (!currentUser) return Swal.fire("Akses Ditolak", "Silakan login!", "warning");
             
-            // Mengambil angka dan membersihkan titik/koma (format ID)
-            const debetRaw = baris.querySelector('.input-debet').value;
-            const kreditRaw = baris.querySelector('.input-kredit').value;
-            
-            const debet = cleanNumber(debetRaw);
-            const kredit = cleanNumber(kreditRaw);
-
-            // Simpan ke Firebase Arsip
-            await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
-                tanggal: bulan,
-                keterangan: `REKAP BULAN ${bulan.toUpperCase()} ${tahun}`,
-                debet: debet,
-                kredit: kredit,
-                createdAt: Date.now() + i
+            const { value: tahun } = await Swal.fire({
+                title: 'Rekap Tahunan',
+                input: 'text',
+                inputLabel: 'Masukkan Tahun Rekap (Contoh: 2024)',
+                showCancelButton: true
             });
-        }
 
-        alert("Berhasil! Semua data bulan sudah masuk ke Arsip.");
-        location.reload(); // Refresh halaman
-    } catch (e) {
-        alert("Terjadi kesalahan: " + e.message);
-    }
-};
+            if (!tahun) return;
+            const namaArsip = `REKAP TAHUNAN ${tahun}`;
+            const semuaBaris = document.querySelectorAll('.baris-rekap');
+            
+            if (semuaBaris.length === 0) return Swal.fire("Gagal", "Tabel input tidak ditemukan.", "error");
+
+            Swal.fire({ title: 'Menyimpan...', allowOutsideClick: false, didOpen: () => { Swal.showLoading() } });
+
+            try {
+                await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { nama: namaArsip, tanggalArsip: Date.now(), tipe: "TAHUNAN" });
+                for (let i = 0; i < semuaBaris.length; i++) {
+                    const baris = semuaBaris[i];
+                    const bulan = baris.querySelector('.nama-bulan').innerText;
+                    const debet = cleanNumber(baris.querySelector('.input-debet').value);
+                    const kredit = cleanNumber(baris.querySelector('.input-kredit').value);
+
+                    await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
+                        tanggal: bulan, keterangan: `REKAP BULAN ${bulan.toUpperCase()} ${tahun}`, debet: debet, kredit: kredit, createdAt: Date.now() + i
+                    });
+                }
+                Swal.fire('Selesai', 'Data rekap tahunan telah disimpan.', 'success').then(() => location.reload());
+            } catch (e) { Swal.fire("Gagal", e.message, "error"); }
+        };
     </script>
 
     <style>
@@ -206,27 +202,32 @@
 <body class="bg-gray-100 p-2 md:p-10">
     <div class="max-w-5xl mx-auto bg-white p-4 md:p-8 shadow-xl rounded-lg relative">
         
-        <div class="absolute top-4 right-4 no-print">
-            <button id="authBtn"></button>
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b pb-6 mb-6 gap-4">
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                <img src="pic/logo.png" alt="Logo" class="h-10 md:h-14 w-auto object-contain">
+                
+                <div class="flex gap-2">
+                    <a href="arsip.html" class="flex items-center gap-2 px-3 py-2 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-green-600 hover:text-green-700 transition-all shadow-sm bg-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                        </svg>
+                        <span class="text-[10px] font-black uppercase tracking-wider">Arsip</span>
+                    </a>
+                    <a href="input_lama.html" class="flex items-center gap-2 px-3 py-2 border-2 border-purple-200 rounded-lg text-purple-600 hover:border-purple-600 hover:text-purple-700 transition-all shadow-sm bg-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span class="text-[10px] font-black uppercase tracking-wider">Input Bulanan</span>
+                    </a>
+                </div>
+            </div>
+
+            <div class="w-full md:w-auto flex justify-end no-print">
+                <button id="authBtn"></button>
+            </div>
         </div>
-        <div class="no-print border-b pb-6 mb-6">
-            <div class="mb-6 flex items-center gap-4">
-    <img src="pic/logo.png" alt="Logo" class="h-14 w-auto object-contain">
-    
-    <a href="arsip.html" class="flex items-center gap-2 px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-green-600 hover:text-green-700 transition-all shadow-sm bg-white">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-        </svg>
-        <span class="text-xs font-black uppercase tracking-wider">Buka Arsip</span>
-    </a>
-    <a href="input_lama.html" class="flex items-center gap-2 px-4 py-2 border-2 border-purple-200 rounded-lg text-purple-600 hover:border-purple-600 hover:text-purple-700 transition-all shadow-sm bg-white">
-    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <span class="text-xs font-black uppercase tracking-wider text-purple-700">Input Data Bulanan</span>
-</a>
-</div>
-            
+
+        <div class="no-print mb-6">
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1">TANGGAL</label>
@@ -234,7 +235,7 @@
                 </div>
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1">KETERANGAN</label>
-                    <input type="text" id="inputKeterangan" placeholder="Contoh: Beli Buku" class="p-2 border rounded outline-none w-full">
+                    <input type="text" id="inputKeterangan" placeholder="Keterangan" class="p-2 border rounded outline-none w-full">
                 </div>
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1">DEBET (MASUK)</label>
@@ -262,7 +263,7 @@
                             <th class="border border-green-800 p-2 w-24 text-right">DEBET</th>
                             <th class="border border-green-800 p-2 w-24 text-right">KREDIT</th>
                             <th class="border border-green-800 p-2 w-28 text-right">SALDO</th>
-                            <th class="border border-green-800 p-2 w-8 no-print bg-green-700"></th> ```
+                            <th class="border border-green-800 p-2 w-8 no-print bg-green-700"></th> 
                         </tr>
                     </thead>
                     <tbody id="bodyTabel" class="text-[11px] md:text-sm"></tbody>
@@ -319,9 +320,10 @@
                         <td class="border border-green-800 p-2 uppercase">${item.keterangan}</td>
                         <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
                         <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
-                         <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
+                        <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
                         <td class="border border-green-800 p-2 text-center no-print">
                         <button onclick="window.hapusBaris('${item.id}')" class="text-red-400 hover:text-red-600 font-bold px-1" title="Hapus Baris">✕</button> 
+                        </td>
                     </tr>`;
             });
 
@@ -331,34 +333,26 @@
                     <td class="border border-green-800 p-2 text-right">${new Intl.NumberFormat('id-ID').format(totalD)}</td>
                     <td class="border border-green-800 p-2 text-right">${new Intl.NumberFormat('id-ID').format(totalK)}</td>
                     <td class="border border-green-800 p-2 text-right bg-green-200">${new Intl.NumberFormat('id-ID').format(totalD - totalK)}</td>
+                    <td class="border border-green-800 p-2 no-print bg-green-200"></td>
                 </tr>`;
         }
 
-        // FUNGSI Pb (PENGGANTI FPDF UNTUK JS)
         function downloadPDF() {
             const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('l', 'mm', 'a4'); // 'l' = Landscape
-            
-            // Judul
+            const doc = new jsPDF('l', 'mm', 'a4');
             doc.setFontSize(18);
-            doc.setTextColor(6, 78, 59); // Warna Hijau Gelap
+            doc.setTextColor(6, 78, 59);
             doc.text("LAPORAN KEUANGAN TK ANANDA", 148, 20, { align: "center" });
             
-            // Data Tabel
             let saldoTemp = 0;
             const rows = window.db.map((item, i) => {
                 saldoTemp += (item.debet - item.kredit);
-                return [
-                    i + 1,
-                    item.tanggal,
-                    item.keterangan.toUpperCase(),
-                    item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : "-",
-                    item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : "-",
-                    new Intl.NumberFormat('id-ID').format(saldoTemp)
-                ];
+                return [i + 1, item.tanggal, item.keterangan.toUpperCase(), 
+                        item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : "-", 
+                        item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : "-", 
+                        new Intl.NumberFormat('id-ID').format(saldoTemp)];
             });
 
-            // Tambahkan baris total
             const totalD = window.db.reduce((a, b) => a + b.debet, 0);
             const totalK = window.db.reduce((a, b) => a + b.kredit, 0);
             rows.push([
@@ -374,21 +368,13 @@
                 body: rows,
                 theme: 'grid',
                 headStyles: { fillColor: [22, 163, 74], halign: 'center' },
-                columnStyles: {
-                    0: { halign: 'center', cellWidth: 15 },
-                    1: { halign: 'center', cellWidth: 35 },
-                    3: { halign: 'right', cellWidth: 35 },
-                    4: { halign: 'right', cellWidth: 35 },
-                    5: { halign: 'right', cellWidth: 35, fontStyle: 'bold' }
-                },
-                styles: { fontSize: 10, cellPadding: 3 }
+                columnStyles: { 0: {halign:'center'}, 1: {halign:'center'}, 3: {halign:'right'}, 4: {halign:'right'}, 5: {halign:'right', fontStyle:'bold'} }
             });
-
             doc.save("Laporan_Keuangan_TK_Ananda.pdf");
         }
 
         function downloadExcel() {
-            if (!window.db.length) return alert("Data kosong!");
+            if (!window.db.length) return Swal.fire("Kosong", "Tidak ada data!", "info");
             let s = 0;
             const data = window.db.map((item, i) => {
                 s += (item.debet - item.kredit);
@@ -399,7 +385,6 @@
             XLSX.utils.book_append_sheet(wb, ws, "Laporan");
             XLSX.writeFile(wb, "Laporan_Keuangan_TK_Ananda.xlsx");
         }
-       
     </script>
 </body>
 </html>
