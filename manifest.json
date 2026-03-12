@@ -1,0 +1,21 @@
+{
+  "name": "Sistem Keuangan TK Ananda",
+  "short_name": "Keuangan TA",
+  "description": "Aplikasi Pencatatan Keuangan TK Ananda",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#16a34a",
+ "icons": [
+  {
+    "src": "pic/logo.png",
+    "sizes": "500x500",
+    "type": "image/png"
+  },
+  {
+    "src": "pic/logo.png",
+    "sizes": "192x192",
+    "type": "image/png"
+  }
+]
+}

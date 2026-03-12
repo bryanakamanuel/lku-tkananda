@@ -158,6 +158,10 @@
     }
 };
     </script>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16a34a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="bg-gray-50 p-4 md:p-10 font-sans">
     <div class="max-w-4xl mx-auto">
@@ -200,5 +204,14 @@
             <button onclick="window.print()" class="mt-6 w-full bg-gray-800 text-white font-bold py-4 rounded-xl text-sm shadow-lg hover:bg-black transition-all">CETAK LAPORAN INI (PDF)</button>
         </div>
     </div>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('PWA Ready'))
+        .catch(err => console.log('PWA Failed', err));
+    });
+  }
+</script>
 </body>
 </html>

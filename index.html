@@ -198,6 +198,10 @@
             th, td { padding: 0.5rem 0.25rem !important; }
         }
     </style>
+    <link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#16a34a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="bg-gray-100 p-2 md:p-10">
     <div class="max-w-5xl mx-auto bg-white p-4 md:p-8 shadow-xl rounded-lg relative">
@@ -308,24 +312,30 @@
             body.innerHTML = "";
             let saldo = 0, totalD = 0, totalK = 0;
 
-            window.db.forEach((item, i) => {
-                saldo += (item.debet - item.kredit);
-                totalD += item.debet;
-                totalK += item.kredit;
+           window.db.forEach((item, i) => {
+    // Saldo tetap dihitung di latar belakang untuk keperluan akumulasi
+    saldo += (item.debet - item.kredit);
+    totalD += item.debet;
+    totalK += item.kredit;
 
-                body.innerHTML += `
-                    <tr class="odd:bg-white even:bg-green-50/30">
-                        <td class="border border-green-800 p-2 text-center">${i + 1}</td>
-                        <td class="border border-green-800 p-2 text-center">${item.tanggal}</td>
-                        <td class="border border-green-800 p-2 uppercase">${item.keterangan}</td>
-                        <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
-                        <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
-                        <td class="border border-green-800 p-2 text-right font-bold">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
-                        <td class="border border-green-800 p-2 text-center no-print">
-                        <button onclick="window.hapusBaris('${item.id}')" class="text-red-400 hover:text-red-600 font-bold px-1" title="Hapus Baris">✕</button> 
-                        </td>
-                    </tr>`;
-            });
+    // Logika pengecekan: tampilkan saldo hanya jika ada nominal debet atau kredit
+    const tampilkanSaldo = (item.debet !== 0 || item.kredit !== 0) 
+        ? new Intl.NumberFormat('id-ID').format(saldo) 
+        : "";
+
+    body.innerHTML += `
+        <tr class="odd:bg-white even:bg-green-50/30">
+            <td class="border border-green-800 p-2 text-center">${i + 1}</td>
+            <td class="border border-green-800 p-2 text-center">${item.tanggal}</td>
+            <td class="border border-green-800 p-2 uppercase">${item.keterangan}</td>
+            <td class="border border-green-800 p-2 text-right">${item.debet ? new Intl.NumberFormat('id-ID').format(item.debet) : ""}</td>
+            <td class="border border-green-800 p-2 text-right text-red-600">${item.kredit ? new Intl.NumberFormat('id-ID').format(item.kredit) : ""}</td>
+            <td class="border border-green-800 p-2 text-right font-bold">${tampilkanSaldo}</td>
+            <td class="border border-green-800 p-2 text-center no-print">
+                <button onclick="window.hapusBaris('${item.id}')" class="text-red-400 hover:text-red-600 font-bold px-1">✕</button> 
+            </td>
+        </tr>`;
+});
 
             footer.innerHTML = `
                 <tr>
@@ -386,5 +396,14 @@
             XLSX.writeFile(wb, "Laporan_Keuangan_TK_Ananda.xlsx");
         }
     </script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then(reg => console.log('PWA Ready'))
+        .catch(err => console.log('PWA Failed', err));
+    });
+  }
+</script>
 </body>
 </html>
