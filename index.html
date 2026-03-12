@@ -7,6 +7,7 @@
 
     <link rel="icon" type="image/jpg" href="pic/logo.png">
     
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     
@@ -16,7 +17,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, getDocs, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy, deleteDoc, getDocs, doc, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         const firebaseConfig = {
             apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
             authDomain: "lku-tk-ananda.firebaseapp.com",
@@ -42,7 +43,7 @@
             const authBtn = document.getElementById('authBtn');
             if (user) {
                 currentUser = user;
-                authBtn.innerHTML = `👋 HALO, ${user.displayName.split(' ')[0]} (Keluar)`;
+                authBtn.innerHTML = ` ${user.displayName.split(' ')[0]} (Keluar)`;
                 authBtn.onclick = window.logout;
                 authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 transition cursor-pointer border border-red-100 px-2 py-1 rounded";
                 loadDataCloud();
@@ -84,6 +85,23 @@
             } catch (e) { alert("Error: " + e.message); }
         };
 
+        window.hapusSemua = async () => {
+    if (!currentUser) return alert("Silakan login terlebih dahulu!");
+    if (!confirm("PERINGATAN: Semua data Anda akan dihapus permanen. Lanjutkan?")) return;
+
+    try {
+        const colRef = collection(dbCloud, `users/${currentUser.uid}/transaksi`);
+        const snapshot = await getDocs(colRef);
+        
+        // Proses hapus satu per satu di latar belakang
+        const promises = snapshot.docs.map(d => deleteDoc(d.ref));
+        await Promise.all(promises);
+        
+        alert("Semua data berhasil dihapus.");
+    } catch (e) {
+        alert("Gagal menghapus semua data: " + e.message);
+    }
+};
             window.hapusBaris = async (id) => {
     // Cari data untuk konfirmasi nama keterangannya
               const item = window.db.find(d => d.id === id);
@@ -93,6 +111,86 @@
         // Tabel akan update otomatis karena onSnapshot
     } catch (e) { 
         alert("Gagal menghapus: " + e.message); 
+    }
+};
+    window.arsipkanData = async () => {
+    if (!currentUser || window.db.length === 0) return alert("Tidak ada data untuk diarsip!");
+    
+    const namaArsip = prompt("Masukkan nama laporan (Contoh: Laporan Maret):");
+    if (!namaArsip) return;
+
+    try {
+        // Baris ini sangat penting agar muncul di daftar arsip.html
+        await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { nama: namaArsip });
+
+        for (const item of window.db) {
+            // Simpan ke folder arsip
+            await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
+                tanggal: item.tanggal,
+                keterangan: item.keterangan,
+                debet: item.debet,
+                kredit: item.kredit,
+                createdAt: item.createdAt || Date.now()
+            });
+            // Hapus dari tabel utama
+            await deleteDoc(doc(dbCloud, `users/${currentUser.uid}/transaksi`, item.id));
+        }
+        alert("Selesai! Data sudah pindah ke Arsip.");
+    } catch (e) {
+        alert("Error: " + e.message);
+    }
+};
+    window.prosesSimpanRekapDariTabel = async () => {
+    if (!currentUser) return alert("Silakan login!");
+    
+    // 1. Tanya Tahun
+    const tahun = prompt("Masukkan Tahun Rekap (Contoh: 2024):");
+    if (!tahun) return;
+
+    const namaArsip = `REKAP TAHUNAN ${tahun}`;
+    
+    // 2. Ambil semua baris input dari area tabel yang kamu buat
+    // Pastikan di HTML kamu, baris tabelnya punya class "baris-rekap"
+    const semuaBaris = document.querySelectorAll('.baris-rekap');
+    
+    if (semuaBaris.length === 0) {
+        return alert("Tabel input tidak ditemukan. Pastikan class 'baris-rekap' sudah dipasang.");
+    }
+
+    try {
+        // A. Buat Folder Arsip Utama
+        await setDoc(doc(dbCloud, `users/${currentUser.uid}/arsip`, namaArsip), { 
+            nama: namaArsip,
+            tanggalArsip: Date.now(),
+            tipe: "TAHUNAN"
+        });
+
+        // B. Loop setiap baris untuk mengambil angka Debet & Kredit
+        for (let i = 0; i < semuaBaris.length; i++) {
+            const baris = semuaBaris[i];
+            const bulan = baris.querySelector('.nama-bulan').innerText;
+            
+            // Mengambil angka dan membersihkan titik/koma (format ID)
+            const debetRaw = baris.querySelector('.input-debet').value;
+            const kreditRaw = baris.querySelector('.input-kredit').value;
+            
+            const debet = cleanNumber(debetRaw);
+            const kredit = cleanNumber(kreditRaw);
+
+            // Simpan ke Firebase Arsip
+            await addDoc(collection(dbCloud, `users/${currentUser.uid}/arsip/${namaArsip}/data`), {
+                tanggal: bulan,
+                keterangan: `REKAP BULAN ${bulan.toUpperCase()} ${tahun}`,
+                debet: debet,
+                kredit: kredit,
+                createdAt: Date.now() + i
+            });
+        }
+
+        alert("Berhasil! Semua data bulan sudah masuk ke Arsip.");
+        location.reload(); // Refresh halaman
+    } catch (e) {
+        alert("Terjadi kesalahan: " + e.message);
     }
 };
     </script>
@@ -111,9 +209,24 @@
         <div class="absolute top-4 right-4 no-print">
             <button id="authBtn"></button>
         </div>
-        <p> halo kaka</p>
         <div class="no-print border-b pb-6 mb-6">
-            <div class="mb-6"><img src="pic/logo.png" alt="Logo" class="h-14 w-auto object-contain"></div>
+            <div class="mb-6 flex items-center gap-4">
+    <img src="pic/logo.png" alt="Logo" class="h-14 w-auto object-contain">
+    
+    <a href="arsip.html" class="flex items-center gap-2 px-4 py-2 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-green-600 hover:text-green-700 transition-all shadow-sm bg-white">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+        </svg>
+        <span class="text-xs font-black uppercase tracking-wider">Buka Arsip</span>
+    </a>
+    <a href="input_lama.html" class="flex items-center gap-2 px-4 py-2 border-2 border-purple-200 rounded-lg text-purple-600 hover:border-purple-600 hover:text-purple-700 transition-all shadow-sm bg-white">
+    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+    <span class="text-xs font-black uppercase tracking-wider text-purple-700">Input Data Bulanan</span>
+</a>
+</div>
+            
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <div class="flex flex-col">
                     <label class="text-[10px] font-bold text-gray-400 ml-1">TANGGAL</label>
@@ -157,13 +270,15 @@
                 </table>
             </div>
         </div>
-
+        
         <div class="mt-8 flex flex-col sm:flex-row gap-4 justify-between items-center no-print">
             <div class="flex gap-2 w-full sm:w-auto">
                 <button onclick="downloadPDF()" class="flex-1 sm:flex-none bg-red-600 text-white px-6 py-2 rounded shadow hover:bg-red-700">📄 PDF</button>
                 <button onclick="downloadExcel()" class="flex-1 sm:flex-none bg-green-700 text-white px-6 py-2 rounded shadow hover:bg-green-800">📊 Excel</button>
+                <button onclick="window.arsipkanData()" class="flex-1 sm:flex-none bg-yellow-600 text-white px-6 py-2 rounded shadow hover:bg-yellow-700">📦 Arsipkan</button>
             </div>
-            <button onclick="hapusSemua()" class="text-red-400 text-xs hover:underline">Hapus Data Permanen</button>
+
+            <button onclick="hapusSemua()" class="text-red-400 text-xs hover:underline">Hapus Semua Data</button>
         </div>
     </div>
 
