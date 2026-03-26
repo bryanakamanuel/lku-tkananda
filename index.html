@@ -77,47 +77,22 @@
             }
 
             const dataMaster = {
-                "REKAP 2020-2021": [
-                    { t: "Juli", d: 36050000, k: 13317300 }, { t: "Agustus", d: 3400000, k: 7513000 },
-                    { t: "September", d: 7700000, k: 8025500 }, { t: "Oktober", d: 7000000, k: 8863100 },
-                    { t: "November", d: 6200000, k: 11360770 }, { t: "Desember", d: 9600000, k: 11450600 },
-                    { t: "Januari", d: 4500000, k: 5437800 }, { t: "Februari", d: 4500000, k: 5664800 },
-                    { t: "Maret", d: 4600000, k: 6428850 }, { t: "April", d: 3200000, k: 6333800 },
-                    { t: "Mei", d: 3300000, k: 8008200 }, { t: "Juni", d: 22730000, k: 14327300 }
-                ],
-                "REKAP 2021-2022": [
-                    { t: "Juli", d: 43550000, k: 24607200 }, { t: "Agustus", d: 10150000, k: 7969800 },
-                    { t: "September", d: 8650000, k: 8952600 }, { t: "Oktober", d: 7250000, k: 9967950 },
-                    { t: "November", d: 10150000, k: 8980700 }, { t: "Desember", d: 5650000, k: 7036300 },
-                    { t: "Januari", d: 5650000, k: 7039500 }, { t: "Februari", d: 5650000, k: 7159300 },
-                    { t: "Maret", d: 5650000, k: 7323000 }, { t: "April", d: 5650000, k: 8935733 },
-                    { t: "Mei", d: 5650000, k: 7557000 }, { t: "Juni", d: 5650000, k: 16353100 }
-                ],
-                "REKAP 2022-2023": [
-                    { t: "Juli", d: 93550000, k: 18573750 }, { t: "Agustus", d: 10400000, k: 30306000 },
-                    { t: "September", d: 16100000, k: 12064900 }, { t: "Oktober", d: 11200000, k: 15733200 },
-                    { t: "November", d: 14400000, k: 9573650 }, { t: "Desember", d: 13200000, k: 7793750 },
-                    { t: "Januari", d: 11800000, k: 16087800 }, { t: "Februari", d: 10700000, k: 20860600 },
-                    { t: "Maret", d: 10400000, k: 19530000 }, { t: "April", d: 10150000, k: 7665600 },
-                    { t: "Mei", d: 10950000, k: 17442700 }, { t: "Juni", d: 11115000, k: 28412620 }
-                ],
-                "REKAP 2023-2024": [
-                    { t: "Juli", d: 88750000, k: 18812000 }, { t: "Agustus", d: 10950000, k: 10718650 },
-                    { t: "September", d: 11800000, k: 22713900 }, { t: "Oktober", d: 15450000, k: 10312100 },
-                    { t: "November", d: 9700000, k: 11075750 }, { t: "Desember", d: 11650000, k: 13699400 },
-                    { t: "Januari", d: 9000000, k: 10535600 }, { t: "Februari", d: 9700000, k: 8924400 },
-                    { t: "Maret", d: 10050000, k: 9731500 }, { t: "April", d: 9350000, k: 14848841 },
-                    { t: "Mei", d: 11800000, k: 23438372 }, { t: "Juni", d: 11400000, k: 25340441 }
-                ],
-                "REKAP 2025": [
-                    { t: "Januari", d: 18225000, k: 14419564 }, { t: "Februari", d: 12500000, k: 36291394 },
-                    { t: "Maret", d: 13550000, k: 15116207 }, { t: "April", d: 15900000, k: 12566518 },
-                    { t: "Mei", d: 14600000, k: 42627075 }, { t: "Juni", d: 12100000, k: 32225648 },
-                    { t: "Juli", d: 146900000, k: 28439561 }, { t: "Agustus", d: 17750000, k: 31416487 },
-                    { t: "September", d: 12750000, k: 13144487 }, { t: "Oktober", d: 14380000, k: 21594088 },
-                    { t: "November", d: 12950000, k: 20044164 }, { t: "Desember", d: 14700000, k: 25364187 }
-                ]
-            };
+    "REKAP 2024-2025": [
+        { t: "Juli", d: 116700000, k: 46656884 },
+        { t: "Agustus", d: 49159000, k: 32222400 },
+        { t: "September", d: 17700000, k: 23224987 },
+        { t: "Oktober", d: 21800000, k: 39156000 },
+        { t: "November", d: 14900000, k: 18334900 },
+        { t: "Desember", d: 20550000, k: 12114486 },
+        { t: "Januari", d: 18225000, k: 14419564 },
+        { t: "Februari", d: 12500000, k: 36291394 },
+        { t: "Maret", d: 13550000, k: 15116207 },
+        { t: "April", d: 15900000, k: 12566518 },
+        { t: "Mei", d: 14600000, k: 42627075 },
+        { t: "Juni", d: 12100000, k: 32225648 }
+    ]
+};
+           
 
             const confirm = await Swal.fire({
                 title: 'Susun Rekap Data?',
@@ -213,7 +188,7 @@
                     <a href="arsip.html" class="flex items-center gap-2 px-3 py-2 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-green-600 hover:text-green-700 transition-all bg-white">
                         <span class="text-[10px] font-black uppercase">Arsip</span>
                     </a>
-                <button id="btnRekapMaster" onclick="importDataHistoris()" class="hidden flex items-center gap-2 px-3 py-2 border-2 border-blue-200 rounded-lg text-blue-600 hover:border-blue-600 hover:text-blue-700 transition-all bg-white">
+              <button id="btnRekapMaster" onclick="importDataHistoris()" class="hidden flex items-center gap-2 px-3 py-2 border-2 border-blue-200 rounded-lg text-blue-600 hover:border-blue-600 hover:text-blue-700 transition-all bg-white">
                         <span class="text-[10px] font-black uppercase">⚡ Susun Rekap</span>
                     </button>
                 </div>
