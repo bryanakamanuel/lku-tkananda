@@ -41,30 +41,29 @@
 
         onAuthStateChanged(auth, (user) => {
             const authBtn = document.getElementById('authBtn');
-            const btnRekap = document.getElementById('btnRekapMaster');
             
-            if (user) {
+        if (user) { 
                 currentUser = user;
                 authBtn.innerHTML = ` ${user.displayName.split(' ')[0]} (Keluar)`;
                 authBtn.onclick = window.logout;
                 authBtn.className = "text-[10px] font-semibold text-red-400 hover:text-red-600 cursor-pointer border border-red-100 px-2 py-1 rounded";
                 
                 // Cek akses tombol rekap
-                if (user.email === EMAIL_PENGELOLA) {
+               /* if (user.email === EMAIL_PENGELOLA) {
                     btnRekap.classList.remove('hidden');
                 } else {
                     btnRekap.classList.add('hidden');
-                }
+                } */
                 
                 loadDataCloud();
             } else {
-                currentUser = null;
-                authBtn.innerHTML = "Login Google";
-                authBtn.onclick = window.login;
-                authBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-md cursor-pointer";
-                btnRekap.classList.add('hidden');
-                window.db = [];
-                renderTabel(); 
+               //  currentUser = null;
+               //  authBtn.innerHTML = "Login Google";
+            // authBtn.onclick = window.login;
+               //  authBtn.className = "bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-bold hover:bg-blue-700 shadow-md cursor-pointer";
+                // btnRekap.classList.add('hidden');
+                // window.db = [];
+                // renderTabel(); 
             }
         });
 
@@ -188,9 +187,7 @@
                     <a href="arsip.html" class="flex items-center gap-2 px-3 py-2 border-2 border-gray-200 rounded-lg text-gray-600 hover:border-green-600 hover:text-green-700 transition-all bg-white">
                         <span class="text-[10px] font-black uppercase">Arsip</span>
                     </a>
-              <button id="btnRekapMaster" onclick="importDataHistoris()" class="hidden flex items-center gap-2 px-3 py-2 border-2 border-blue-200 rounded-lg text-blue-600 hover:border-blue-600 hover:text-blue-700 transition-all bg-white">
-                        <span class="text-[10px] font-black uppercase"></span>
-                    </button>
+             
                 </div>
             </div>
             <div class="w-full md:w-auto flex justify-end no-print">
