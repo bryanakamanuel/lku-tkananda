@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Input Rekap - TK Ananda</title>
+     <link rel="icon" type="image/jpg" href="pic/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
+            authDomain: "lku-tk-ananda.firebaseapp.com",
+            projectId: "lku-tk-ananda",
+            storageBucket: "lku-tk-ananda.firebasestorage.app",
+            messagingSenderId: "310516809206",
+            appId: "1:310516809206:web:f545e45967fccff5ce1bd7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUID = null;
+
+        const bulanIndo = ["JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER", "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI"];
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                currentUID = user.uid; 
+                generateRows(); 
+                loadDraft();
+            } else { 
+                window.location.href = "index.html"; 
+            }
+        });
+
+        // Fungsi Format Ribuan
+        window.formatInput = (input) => {
+            let value = input.value.replace(/\./g, '');
+            if (!isNaN(value) && value !== "") {
+                input.value = Number(value).toLocaleString('id-ID');
+            }
+            saveDraft();
+            hitung();
+        };
+
+        // Fungsi Generate Tabel (Nomor Urut Pasti Angka)
+        function generateRows() {
+            const container = document.getElementById('tableBody');
+            let rows = "";
+            for (let i = 0; i < bulanIndo.length; i++) {
+                rows += `
+                <tr class="border-b border-gray-100 text-xs md:text-sm">
+                    <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r">${i + 1}</td>
+                    <td class="p-3 font-bold text-gray-700 bg-white border-r uppercase">${bulanIndo[i]}</td>
+                    <td class="p-1 bg-white border-r">
+                        <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+                    </td>
+                    <td class="p-1 bg-white border-r">
+                        <input type="text" id="k_${i}" oninput="formatInput(this)" class="w-full p-2 text-right text-red-500 outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+                    </td>
+                    <td class="p-3 text-right font-bold text-green-700 bg-gray-50/50" id="s_${i}">0</td>
+                </tr>`;
+            }
+            container.innerHTML = rows;
+        }
+
+        // Fungsi Hitung Saldo (Pasti Akurat)
+        window.hitung = () => {
+            let runningSaldo = 0;
+            let totalDebet = 0;
+            let totalKredit = 0;
+
+            for (let i = 0; i < bulanIndo.length; i++) {
+                const dVal = document.getElementById('d_' + i).value.replace(/\./g, '') || "0";
+                const kVal = document.getElementById('k_' + i).value.replace(/\./g, '') || "0";
+                
+                const d = parseInt(dVal);
+                const k = parseInt(kVal);
+                
+                totalDebet += d;
+                totalKredit += k;
+                runningSaldo += (d - k);
+                
+                const elSaldo = document.getElementById('s_' + i);
+                elSaldo.innerText = runningSaldo.toLocaleString('id-ID');
+                elSaldo.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+            }
+
+            document.getElementById('grandTotalDebet').innerText = totalDebet.toLocaleString('id-ID');
+            document.getElementById('grandTotalKredit').innerText = totalKredit.toLocaleString('id-ID');
+            const elGrandSaldo = document.getElementById('grandTotalSaldo');
+            elGrandSaldo.innerText = runningSaldo.toLocaleString('id-ID');
+            elGrandSaldo.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+        };
+
+        function saveDraft() {
+            const values = [];
+            for (let i = 0; i < bulanIndo.length; i++) {
+                values.push({
+                    d: document.getElementById('d_' + i).value,
+                    k: document.getElementById('k_' + i).value
+                });
+            }
+            const draftData = {
+                judul: document.getElementById('judulArsip').value,
+                values: values
+            };
+            localStorage.setItem('rekap_draft', JSON.stringify(draftData));
+        }
+
+        function loadDraft() {
+            const saved = localStorage.getItem('rekap_draft');
+            if (saved) {
+                const data = JSON.parse(saved);
+                document.getElementById('judulArsip').value = data.judul || "";
+                for (let i = 0; i < bulanIndo.length; i++) {
+                    if(data.values[i]) {
+                        document.getElementById('d_' + i).value = data.values[i].d || "";
+                        document.getElementById('k_' + i).value = data.values[i].k || "";
+                    }
+                }
+                hitung();
+            }
+        }
+
+        window.simpanKeArsip = async () => {
+            const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
+            if(!namaArsip) return alert("Mohon isi Judul Rekap!");
+            if(!confirm("Simpan rekap ke arsip?")) return;
+
+            try {
+                await setDoc(doc(db, "users/" + currentUID + "/arsip", namaArsip), { 
+                    nama: namaArsip, 
+                    updatedAt: Date.now() 
+                }, { merge: true });
+
+                for(let i=0; i < bulanIndo.length; i++) {
+                    const dVal = document.getElementById('d_' + i).value.replace(/\./g, '') || "0";
+                    const kVal = document.getElementById('k_' + i).value.replace(/\./g, '') || "0";
+                    const debet = parseInt(dVal);
+                    const kredit = parseInt(kVal);
+                    
+                    if(debet !== 0 || kredit !== 0) {
+                        await addDoc(collection(db, "users/" + currentUID + "/arsip/" + namaArsip + "/data"), {
+                            no: i + 1,
+                            tanggal: bulanIndo[i],
+                            keterangan: "-",
+                            debet: debet,
+                            kredit: kredit,
+                            createdAt: Date.now() + i
+                        });
+                    }
+                }
+                localStorage.removeItem('rekap_draft');
+                alert("Berhasil disimpan!");
+                window.location.href = "arsip.html";
+            } catch (e) { alert("Error: " + e.message); }
+        };
+    </script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="max-w-5xl mx-auto p-4 md:p-8 pb-24">
+        <div class="flex justify-between items-center mb-6">
+            <a href="index.html" class="bg-white px-4 py-2 rounded-xl shadow-sm text-xs font-bold text-gray-400 border border-gray-100 hover:text-green-600">← KEMBALI</a>
+            <input type="text" id="judulArsip" oninput="saveDraft()" placeholder="REKAP 2025-2026" class="bg-transparent text-center text-xl md:text-2xl font-black text-green-800 outline-none uppercase w-full max-w-sm">
+            <div class="w-10 md:w-20"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="bg-green-700 text-white text-[10px] md:text-xs uppercase tracking-widest">
+                            <th class="p-4 border-r border-green-800 w-12 text-center">NO</th>
+                            <th class="p-4 text-left border-r border-green-800">BULAN</th>
+                            <th class="p-4 text-right border-r border-green-800">DEBET</th>
+                            <th class="p-4 text-right border-r border-green-800">KREDIT</th>
+                            <th class="p-4 text-right">SALDO</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                    <tfoot class="bg-green-50/80 font-black text-xs md:text-sm border-t-2 border-green-700">
+                        <tr>
+                            <td colspan="2" class="p-4 text-center text-green-800 border-r uppercase tracking-tighter">Jumlah Total Akhir</td>
+                            <td id="grandTotalDebet" class="p-4 text-right text-green-800 border-r">0</td>
+                            <td id="grandTotalKredit" class="p-4 text-right text-red-600 border-r">0</td>
+                            <td id="grandTotalSaldo" class="p-4 text-right text-green-800">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="flex justify-end mt-8">
+            <button onclick="simpanKeArsip()" class="bg-green-600 hover:bg-green-700 text-white px-10 py-4 rounded-xl font-black shadow-lg uppercase active:scale-95 transition-all">
+                💾 SIMPAN KE ARSIP
+            </button>
+        </div>
+    </div>
+</body>
+</html>

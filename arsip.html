@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-     <title>Tk Ananda - Sistem Keuangan</title>
-
+    <title>Tk Ananda - Sistem Keuangan</title>
     <link rel="icon" type="image/jpg" href="pic/logo.png">
-    
     <script src="https://cdn.tailwindcss.com"></script>
 
     <script type="module">
@@ -39,136 +37,160 @@
         });
 
         async function loadDaftarArsip() {
-    const container = document.getElementById('listArsip');
-    try {
-        const snap = await getDocs(collection(db, `users/${currentUID}/arsip`));
-        container.innerHTML = snap.empty ? '<p class="text-gray-400">Belum ada arsip.</p>' : "";
-        
-        snap.forEach(doc => {
+            const container = document.getElementById('listArsip');
+            try {
+                const snapLKU = await getDocs(collection(db, `users/${currentUID}/arsip`));
+                const snapPSB = await getDocs(collection(db, `users/${currentUID}/arsip_psb`));
+                
+                container.innerHTML = (snapLKU.empty && snapPSB.empty) ? '<p class="text-gray-400">Belum ada arsip.</p>' : "";
+                
+                snapLKU.forEach(d => renderCard(d.id, 'LKU', 'border-green-100', 'text-green-600'));
+                snapPSB.forEach(d => renderCard(d.id, 'PSB', 'border-blue-100', 'text-blue-600'));
+
+            } catch (e) { alert("Gagal memuat daftar: " + e.message); }
+        }
+
+        function renderCard(id, tipe, borderColor, textColor) {
+            const container = document.getElementById('listArsip');
             container.innerHTML += `
                 <div class="relative group">
-                    <button onclick="window.lihatDetail('${doc.id}')" class="w-full text-left p-4 bg-white border-2 border-gray-100 rounded-xl hover:border-green-500 transition-all flex justify-between items-center shadow-sm">
-                        <span class="font-bold text-gray-700 uppercase">${doc.id}</span>
-                        <span class="text-green-600 font-bold text-xs opacity-0 group-hover:opacity-100 transition mr-8">BUKA →</span>
+                    <button onclick="window.lihatDetail('${id}', '${tipe}')" class="w-full text-left p-4 bg-white border-2 ${borderColor} rounded-xl hover:border-gray-400 transition-all flex justify-between items-center shadow-sm">
+                        <div>
+                            <span class="block text-[10px] font-black ${textColor}">[${tipe}]</span>
+                            <span class="font-bold text-gray-700 uppercase">${id}</span>
+                        </div>
+                        <span class="${textColor} font-bold text-xs opacity-0 group-hover:opacity-100 transition mr-8">BUKA →</span>
                     </button>
-                    <button onclick="window.hapusArsip('${doc.id}')" class="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 p-2">
+                    <button onclick="window.hapusArsip('${id}', '${tipe}')" class="absolute right-3 top-1/2 -translate-y-1/2 text-red-400 hover:text-red-600 p-2">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-4v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                     </button>
                 </div>`;
-        });
-    } catch (e) { alert("Gagal memuat daftar: " + e.message); }
-}
-
-        window.lihatDetail = async (namaArsip) => {
-    const detailArea = document.getElementById('detailArea');
-    const tableBody = document.getElementById('bodyTabelArsip');
-    const judulArsip = document.getElementById('judulArsip');
-    
-    // Ambil elemen tfoot untuk diisi angkanya nanti
-    const elTotalDebet = document.getElementById('totalDebetArsip');
-    const elTotalKredit = document.getElementById('totalKreditArsip');
-    const elTotalSaldo = document.getElementById('totalSaldoArsip');
-    
-    detailArea.classList.remove('hidden');
-    tableBody.innerHTML = "<tr><td colspan='6' class='p-4 text-center text-gray-400 italic'>Memuat data...</td></tr>";
-    judulArsip.innerText = namaArsip;
-
-    try {
-        const q = query(collection(db, `users/${currentUID}/arsip/${namaArsip}/data`), orderBy("createdAt", "asc"));
-        const snap = await getDocs(q);
-        
-        tableBody.innerHTML = ""; 
-        let saldo = 0; 
-        let totalDebet = 0;   // VARIABEL BARU
-        let totalKredit = 0;  // VARIABEL BARU
-
-        if (snap.empty) {
-            tableBody.innerHTML = "<tr><td colspan='6' class='p-4 text-center'>Arsip tidak memiliki data.</td></tr>";
-            return;
         }
 
-        snap.docs.forEach((doc, idx) => {
+        window.lihatDetail = async (namaArsip, tipe) => {
+            const detailArea = document.getElementById('detailArea');
+            const tableHead = document.getElementById('headTabelArsip');
+            const tableBody = document.getElementById('bodyTabelArsip');
+            const tableFoot = document.getElementById('footTabelArsip');
+            const judulArsip = document.getElementById('judulArsip');
+            
+            detailArea.classList.remove('hidden');
+            tableBody.innerHTML = "<tr><td colspan='12' class='p-4 text-center text-gray-400 italic'>Memuat data...</td></tr>";
+            judulArsip.innerText = `[${tipe}] ${namaArsip}`;
+
             try {
-                const item = doc.data();
-                const d = parseFloat(item.debet) || 0;
-                const k = parseFloat(item.kredit) || 0;
-                
-                // Tambahkan ke total keseluruhan
-                totalDebet += d;
-                totalKredit += k;
-                
-                saldo += (d - k);
-                const urutan = Number(idx) + 1;
+                const koleksiPath = tipe === 'PSB' ? 'arsip_psb' : 'arsip';
+                const q = query(collection(db, `users/${currentUID}/${koleksiPath}/${namaArsip}/data`), orderBy("createdAt", "asc"));
+                const snap = await getDocs(q);
+                tableBody.innerHTML = ""; 
 
-                tableBody.innerHTML += `
-                    <tr class="border-b border-gray-100 text-[11px] md:text-sm uppercase hover:bg-gray-50">
-                        <td class="p-2 text-center border border-gray-200 bg-gray-50 font-bold text-gray-700">${urutan}</td>
-                        <td class="p-2 text-center border border-gray-200">${item.tanggal || '-'}</td>
-                        <td class="p-2 border border-gray-200">${item.keterangan || '-'}</td>
-                        <td class="p-2 text-right border border-gray-200">${d > 0 ? new Intl.NumberFormat('id-ID').format(d) : "-"}</td>
-                        <td class="p-2 text-right text-red-500 border border-gray-200">${k > 0 ? new Intl.NumberFormat('id-ID').format(k) : "-"}</td>
-                        <td class="p-2 text-right font-bold text-green-800 border border-gray-200 bg-green-50/50">${new Intl.NumberFormat('id-ID').format(saldo)}</td>
-                    </tr>`;
-            } catch (err) {
-                console.error("Error pada baris data:", err);
-            }
-        });
+                if (tipe === 'PSB') {
+                    tableHead.innerHTML = `
+                        <tr class="bg-blue-800 text-white text-[9px] uppercase">
+                            <th class="p-2 border border-blue-900">NO</th>
+                            <th class="p-2 border border-blue-900">TANGGAL</th>
+                            <th class="p-2 border border-blue-900">NAMA ANAK</th>
+                            <th class="p-2 border border-blue-900">FORM</th>
+                            <th class="p-2 border border-blue-900">SPP</th>
+                            <th class="p-2 border border-blue-900">PRASARANA</th>
+                            <th class="p-2 border border-blue-900">SERAGAM</th>
+                            <th class="p-2 border border-blue-900">PERLENGKAPAN</th>
+                            <th class="p-2 border border-blue-900">ANGS 1</th>
+                            <th class="p-2 border border-blue-900">ANGS 2</th>
+                            <th class="p-2 border border-blue-900">ANGS 3</th>
+                            <th class="p-2 border border-blue-900 bg-green-700">TOTAL</th>
+                        </tr>`;
+                    tableFoot.classList.add('hidden');
 
-        // MASUKKAN HASIL PENJUMLAHAN KE TFOOT
-        elTotalDebet.innerText = new Intl.NumberFormat('id-ID').format(totalDebet);
-        elTotalKredit.innerText = new Intl.NumberFormat('id-ID').format(totalKredit);
-        
-        const saldoAkhir = totalDebet - totalKredit;
-        elTotalSaldo.innerText = new Intl.NumberFormat('id-ID').format(saldoAkhir);
-        
-        // Tambahkan warna merah jika saldo akhir negatif
-        if (saldoAkhir < 0) {
-            elTotalSaldo.classList.add('text-red-600');
-        } else {
-            elTotalSaldo.classList.remove('text-red-600');
-        }
-        
-        detailArea.scrollIntoView({ behavior: 'smooth' });
-    } catch (e) { 
-        alert("Gagal memuat detail: " + e.message); 
-    } 
-};
-        window.hapusArsip = async (namaArsip) => {
-    if (!confirm(`Hapus seluruh arsip "${namaArsip}"? Data yang dihapus tidak bisa dikembalikan.`)) return;
+                    let indexCounter = 1;
+                    snap.forEach((doc) => {
+                        const r = doc.data();
+                        // PENGAMAN NAN: Paksa jadi angka 0 jika data kosong
+                        const f = parseFloat(r.formulir) || 0;
+                        const s = parseFloat(r.spp) || 0;
+                        const pr = parseFloat(r.prasarana) || 0;
+                        const sr = parseFloat(r.seragam) || 0;
+                        const pl = parseFloat(r.perlengkapan) || 0;
+                        const a1 = parseFloat(r.angs1) || 0;
+                        const a2 = parseFloat(r.angs2) || 0;
+                        const a3 = parseFloat(r.angs3) || 0;
+                        
+                        const totalRow = f + s + pr + sr + pl + a1 + a2 + a3;
+                        
+                        tableBody.innerHTML += `
+                            <tr class="border-b text-[10px] uppercase hover:bg-gray-50">
+                                <td class="p-2 border text-center font-bold">${r.no || indexCounter++}</td>
+                                <td class="p-2 border text-center">${r.tanggal || r.tgl || '-'}</td>
+                                <td class="p-2 border font-bold">${r.nama || '-'}</td>
+                                <td class="p-2 border text-right">${f.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${s.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${pr.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${sr.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right bg-orange-50">${pl.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${a1.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${a2.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right">${a3.toLocaleString('id-ID')}</td>
+                                <td class="p-2 border text-right font-bold bg-green-50">${totalRow.toLocaleString('id-ID')}</td>
+                            </tr>`;
+                    });
+                } else {
+                    tableHead.innerHTML = `
+                        <tr class="bg-green-700 text-white text-[10px] uppercase tracking-widest">
+                            <th class="p-3 border border-green-800">NO</th>
+                            <th class="p-3 border border-green-800">TANGGAL</th>
+                            <th class="p-3 border border-green-800 text-left">KETERANGAN</th>
+                            <th class="p-3 border border-green-800 text-right">DEBET</th>
+                            <th class="p-3 border border-green-800 text-right">KREDIT</th>
+                            <th class="p-3 border border-green-800 text-right">SALDO</th>
+                        </tr>`;
+                    tableFoot.classList.remove('hidden');
 
-    try {
-        // 1. Ambil semua data di dalam sub-koleksi 'data' untuk dihapus satu per satu
-        const dataRef = collection(db, `users/${currentUID}/arsip/${namaArsip}/data`);
-        const snap = await getDocs(dataRef);
-        
-        const deletePromises = snap.docs.map(d => deleteDoc(d.ref));
-        await Promise.all(deletePromises);
+                    let saldo = 0, tDebet = 0, tKredit = 0, idxLku = 1;
+                    snap.forEach((doc) => {
+                        const item = doc.data();
+                        const d = parseFloat(item.debet) || 0;
+                        const k = parseFloat(item.kredit) || 0;
+                        tDebet += d; tKredit += k; saldo += (d - k);
+                        
+                        tableBody.innerHTML += `
+                            <tr class="border-b border-gray-100 text-[11px] md:text-sm uppercase hover:bg-gray-50">
+                                <td class="p-2 text-center border border-gray-200 bg-gray-50 font-bold">${item.no || idxLku++}</td>
+                                <td class="p-2 text-center border border-gray-200">${item.tanggal || item.tgl || '-'}</td>
+                                <td class="p-2 border border-gray-200">${item.keterangan || '-'}</td>
+                                <td class="p-2 text-right border border-gray-200">${d > 0 ? d.toLocaleString('id-ID') : "-"}</td>
+                                <td class="p-2 text-right text-red-500 border border-gray-200">${k > 0 ? k.toLocaleString('id-ID') : "-"}</td>
+                                <td class="p-2 text-right font-bold text-green-800 border border-gray-200 bg-green-50/50">${saldo.toLocaleString('id-ID')}</td>
+                            </tr>`;
+                    });
+                    document.getElementById('totalDebetArsip').innerText = tDebet.toLocaleString('id-ID');
+                    document.getElementById('totalKreditArsip').innerText = tKredit.toLocaleString('id-ID');
+                    document.getElementById('totalSaldoArsip').innerText = (tDebet - tKredit).toLocaleString('id-ID');
+                }
+                detailArea.scrollIntoView({ behavior: 'smooth' });
+            } catch (e) { alert("Gagal memuat detail: " + e.message); } 
+        };
 
-        // 2. Hapus dokumen penanda foldernya
-        await deleteDoc(doc(db, `users/${currentUID}/arsip`, namaArsip));
-
-        alert("Arsip berhasil dihapus!");
-        
-        // 3. Refresh tampilan
-        location.reload(); 
-    } catch (e) {
-        alert("Gagal menghapus: " + e.message);
-    }
-};
+        window.hapusArsip = async (namaArsip, tipe) => {
+            if (!confirm(`Hapus seluruh arsip ${tipe} "${namaArsip}"?`)) return;
+            try {
+                const folder = tipe === 'PSB' ? 'arsip_psb' : 'arsip';
+                const snap = await getDocs(collection(db, `users/${currentUID}/${folder}/${namaArsip}/data`));
+                await Promise.all(snap.docs.map(d => deleteDoc(d.ref)));
+                await deleteDoc(doc(db, `users/${currentUID}/${folder}`, namaArsip));
+                alert("Arsip berhasil dihapus!");
+                location.reload(); 
+            } catch (e) { alert("Gagal menghapus: " + e.message); }
+        };
     </script>
-    <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#16a34a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body class="bg-gray-50 p-4 md:p-10 font-sans">
     <div class="max-w-4xl mx-auto">
         <div class="flex justify-between items-end mb-8">
             <div>
                 <h1 class="text-3xl font-black text-green-900 tracking-tighter uppercase">Arsip Laporan</h1>
-                <p class="text-gray-500 text-xs font-bold uppercase tracking-widest text-right">TK Ananda</p>
+                <p class="text-gray-500 text-xs font-bold uppercase tracking-widest">TK Ananda</p>
             </div>
             <a href="index.html" class="text-xs font-black text-blue-500 border-b-2 border-blue-500 pb-1">KEMBALI KE UTAMA</a>
         </div>
@@ -180,38 +202,20 @@
             
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse border border-gray-200">
-                    <thead>
-                        <tr class="bg-green-700 text-white text-[10px] uppercase tracking-widest">
-                            <th class="p-3 border border-green-800">NO</th>
-                            <th class="p-3 border border-green-800">TANGGAL</th>
-                            <th class="p-3 border border-green-800 text-left">KETERANGAN</th>
-                            <th class="p-3 border border-green-800 text-right">DEBET</th>
-                            <th class="p-3 border border-green-800 text-right">KREDIT</th>
-                            <th class="p-3 border border-green-800 text-right">SALDO</th>
-                        </tr>
-                    </thead>
+                    <thead id="headTabelArsip"></thead>
                     <tbody id="bodyTabelArsip"></tbody>
-                    <tfoot class="bg-green-50 font-bold">
-            <tr class="text-[11px] md:text-sm text-green-900">
-                <td colspan="3" class="p-3 border border-gray-200 text-center uppercase tracking-wider">Jumlah Total</td>
-                <td id="totalDebetArsip" class="p-3 border border-gray-200 text-right">0</td>
-                <td id="totalKreditArsip" class="p-3 border border-gray-200 text-right">0</td>
-                <td id="totalSaldoArsip" class="p-3 border border-gray-200 text-right">0</td>
-            </tr>
-        </tfoot>
+                    <tfoot id="footTabelArsip" class="bg-green-50 font-bold">
+                        <tr class="text-[11px] md:text-sm text-green-900">
+                            <td colspan="3" class="p-3 border border-gray-200 text-center uppercase tracking-wider">Jumlah Total</td>
+                            <td id="totalDebetArsip" class="p-3 border border-gray-200 text-right">0</td>
+                            <td id="totalKreditArsip" class="p-3 border border-gray-200 text-right">0</td>
+                            <td id="totalSaldoArsip" class="p-3 border border-gray-200 text-right">0</td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
             <button onclick="window.print()" class="mt-6 w-full bg-gray-800 text-white font-bold py-4 rounded-xl text-sm shadow-lg hover:bg-black transition-all">CETAK LAPORAN INI (PDF)</button>
         </div>
     </div>
-    <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./sw.js')
-        .then(reg => console.log('PWA Ready'))
-        .catch(err => console.log('PWA Failed', err));
-    });
-  }
-</script>
 </body>
 </html>
