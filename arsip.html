@@ -107,7 +107,6 @@
                     let indexCounter = 1;
                     snap.forEach((doc) => {
                         const r = doc.data();
-                        // PENGAMAN NAN: Paksa jadi angka 0 jika data kosong
                         const f = parseFloat(r.formulir) || 0;
                         const s = parseFloat(r.spp) || 0;
                         const pr = parseFloat(r.prasarana) || 0;
@@ -116,7 +115,6 @@
                         const a1 = parseFloat(r.angs1) || 0;
                         const a2 = parseFloat(r.angs2) || 0;
                         const a3 = parseFloat(r.angs3) || 0;
-                        
                         const totalRow = f + s + pr + sr + pl + a1 + a2 + a3;
                         
                         tableBody.innerHTML += `
@@ -136,10 +134,20 @@
                             </tr>`;
                     });
                 } else {
+                    // LOGIKA DETEKSI TANGGAL (BARU)
+                    let adaTanggal = false;
+                    const tempItems = [];
+                    snap.forEach(doc => {
+                        const data = doc.data();
+                        const tgl = data.tanggal || data.tgl || "";
+                        if(tgl.trim() !== "" && tgl !== "-") adaTanggal = true;
+                        tempItems.push(data);
+                    });
+
                     tableHead.innerHTML = `
                         <tr class="bg-green-700 text-white text-[10px] uppercase tracking-widest">
-                            <th class="p-3 border border-green-800">NO</th>
-                            <th class="p-3 border border-green-800">TANGGAL</th>
+                            <th class="p-3 border border-green-800 w-12">NO</th>
+                            ${adaTanggal ? '<th class="p-3 border border-green-800">TANGGAL</th>' : ''}
                             <th class="p-3 border border-green-800 text-left">KETERANGAN</th>
                             <th class="p-3 border border-green-800 text-right">DEBET</th>
                             <th class="p-3 border border-green-800 text-right">KREDIT</th>
@@ -148,8 +156,7 @@
                     tableFoot.classList.remove('hidden');
 
                     let saldo = 0, tDebet = 0, tKredit = 0, idxLku = 1;
-                    snap.forEach((doc) => {
-                        const item = doc.data();
+                    tempItems.forEach((item) => {
                         const d = parseFloat(item.debet) || 0;
                         const k = parseFloat(item.kredit) || 0;
                         tDebet += d; tKredit += k; saldo += (d - k);
@@ -157,16 +164,22 @@
                         tableBody.innerHTML += `
                             <tr class="border-b border-gray-100 text-[11px] md:text-sm uppercase hover:bg-gray-50">
                                 <td class="p-2 text-center border border-gray-200 bg-gray-50 font-bold">${item.no || idxLku++}</td>
-                                <td class="p-2 text-center border border-gray-200">${item.tanggal || item.tgl || '-'}</td>
+                                ${adaTanggal ? `<td class="p-2 text-center border border-gray-200">${item.tanggal || item.tgl || '-'}</td>` : ''}
                                 <td class="p-2 border border-gray-200">${item.keterangan || '-'}</td>
                                 <td class="p-2 text-right border border-gray-200">${d > 0 ? d.toLocaleString('id-ID') : "-"}</td>
                                 <td class="p-2 text-right text-red-500 border border-gray-200">${k > 0 ? k.toLocaleString('id-ID') : "-"}</td>
                                 <td class="p-2 text-right font-bold text-green-800 border border-gray-200 bg-green-50/50">${saldo.toLocaleString('id-ID')}</td>
                             </tr>`;
                     });
-                    document.getElementById('totalDebetArsip').innerText = tDebet.toLocaleString('id-ID');
-                    document.getElementById('totalKreditArsip').innerText = tKredit.toLocaleString('id-ID');
-                    document.getElementById('totalSaldoArsip').innerText = (tDebet - tKredit).toLocaleString('id-ID');
+
+                    // Update Footer Colspan
+                    tableFoot.innerHTML = `
+                        <tr class="text-[11px] md:text-sm text-green-900">
+                            <td colspan="${adaTanggal ? 3 : 2}" class="p-3 border border-gray-200 text-center uppercase tracking-wider">Jumlah Total</td>
+                            <td class="p-3 border border-gray-200 text-right">${tDebet.toLocaleString('id-ID')}</td>
+                            <td class="p-3 border border-gray-200 text-right">${tKredit.toLocaleString('id-ID')}</td>
+                            <td class="p-3 border border-gray-200 text-right">${(tDebet - tKredit).toLocaleString('id-ID')}</td>
+                        </tr>`;
                 }
                 detailArea.scrollIntoView({ behavior: 'smooth' });
             } catch (e) { alert("Gagal memuat detail: " + e.message); } 
@@ -204,14 +217,7 @@
                 <table class="w-full border-collapse border border-gray-200">
                     <thead id="headTabelArsip"></thead>
                     <tbody id="bodyTabelArsip"></tbody>
-                    <tfoot id="footTabelArsip" class="bg-green-50 font-bold">
-                        <tr class="text-[11px] md:text-sm text-green-900">
-                            <td colspan="3" class="p-3 border border-gray-200 text-center uppercase tracking-wider">Jumlah Total</td>
-                            <td id="totalDebetArsip" class="p-3 border border-gray-200 text-right">0</td>
-                            <td id="totalKreditArsip" class="p-3 border border-gray-200 text-right">0</td>
-                            <td id="totalSaldoArsip" class="p-3 border border-gray-200 text-right">0</td>
-                        </tr>
-                    </tfoot>
+                    <tfoot id="footTabelArsip" class="bg-green-50 font-bold"></tfoot>
                 </table>
             </div>
             <button onclick="window.print()" class="mt-6 w-full bg-gray-800 text-white font-bold py-4 rounded-xl text-sm shadow-lg hover:bg-black transition-all">CETAK LAPORAN INI (PDF)</button>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Gabungan - TK Ananda</title>
+    <link rel="icon" type="image/jpg" href="pic/logo.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
+            authDomain: "lku-tk-ananda.firebaseapp.com",
+            projectId: "lku-tk-ananda",
+            storageBucket: "lku-tk-ananda.firebasestorage.app",
+            messagingSenderId: "310516809206",
+            appId: "1:310516809206:web:f545e45967fccff5ce1bd7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUID = null;
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                currentUID = user.uid; 
+                loadDraft(); // Fungsi agar data tidak hilang saat reload
+            } else { 
+                window.location.href = "index.html"; 
+            }
+        });
+
+        // Fitur Auto-Save ke LocalStorage
+        window.saveDraft = () => {
+            const rows = document.querySelectorAll('#tableBody tr');
+            const data = Array.from(rows).map(row => ({
+                ket: row.querySelector('.ket').value,
+                deb: row.querySelector('.deb').value,
+                kre: row.querySelector('.kre').value
+            }));
+            const draft = {
+                judul: document.getElementById('judulArsip').value,
+                data: data
+            };
+            localStorage.setItem('draft_rekap_gabungan', JSON.stringify(draft));
+        };
+
+        function loadDraft() {
+            const saved = JSON.parse(localStorage.getItem('draft_rekap_gabungan'));
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = "";
+            
+            if (saved && saved.data.length > 0) {
+                document.getElementById('judulArsip').value = saved.judul || "";
+                saved.data.forEach((item, i) => {
+                    tambahBarisManual(item.ket, item.deb, item.kre);
+                });
+                hitungTotal();
+            } else {
+                for(let i=0; i<10; i++) tambahBarisManual(); // Default 10 baris
+            }
+        }
+
+        window.formatInput = (input) => {
+            let value = input.value.replace(/\./g, '');
+            if (!isNaN(value) && value !== "") {
+                input.value = Number(value).toLocaleString('id-ID');
+            }
+            saveDraft();
+            hitungTotal();
+        };
+
+        function tambahBarisManual(ket = "", deb = "", kre = "") {
+            const tbody = document.getElementById('tableBody');
+            const rowCount = tbody.rows.length;
+            const tr = document.createElement('tr');
+            tr.className = "border-b border-gray-200 text-[11px] md:text-sm";
+            tr.innerHTML = `
+                <td class="p-2 text-center font-bold text-gray-400 bg-gray-50 border-r w-10">${rowCount + 1}</td>
+                <td class="p-0 bg-white border-r">
+                    <input type="text" class="ket w-full p-2 outline-none focus:bg-yellow-50 uppercase font-medium" placeholder="..." value="${ket}" oninput="saveDraft()">
+                </td>
+                <td class="p-0 bg-white border-r">
+                    <input type="text" class="deb w-full p-2 text-right outline-none focus:bg-green-50 font-bold" placeholder="0" value="${deb}" oninput="formatInput(this)">
+                </td>
+                <td class="p-0 bg-white border-r">
+                    <input type="text" class="kre w-full p-2 text-right text-red-500 outline-none focus:bg-red-50 font-bold" placeholder="0" value="${kre}" oninput="formatInput(this)">
+                </td>
+                <td class="p-2 text-right font-bold text-green-700 bg-gray-50 sal">0</td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        window.tambahBarisTombol = () => {
+            tambahBarisManual();
+            saveDraft();
+        };
+
+        window.hitungTotal = () => {
+            let runningSaldo = 0, tDebet = 0, tKredit = 0;
+            const rows = document.querySelectorAll('#tableBody tr');
+            rows.forEach(row => {
+                const d = parseInt(row.querySelector('.deb').value.replace(/\./g, '')) || 0;
+                const k = parseInt(row.querySelector('.kre').value.replace(/\./g, '')) || 0;
+                tDebet += d; tKredit += k; runningSaldo += (d - k);
+                const salCell = row.querySelector('.sal');
+                salCell.innerText = runningSaldo.toLocaleString('id-ID');
+                salCell.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+            });
+            document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
+            document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
+            const elGS = document.getElementById('grandTotalSaldo');
+            elGS.innerText = runningSaldo.toLocaleString('id-ID');
+            elGS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+        };
+
+        window.simpanKeArsip = async () => {
+            const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
+            if(!namaArsip) return alert("Isi Judul Rekap!");
+            if(!confirm("Simpan Rekap Gabungan ini?")) return;
+
+            try {
+                // Simpan Induk Arsip
+                await setDoc(doc(db, "users/" + currentUID + "/arsip", namaArsip), { 
+                    nama: namaArsip, 
+                    updatedAt: Date.now(),
+                    tipe: 'GABUNGAN'
+                }, { merge: true });
+
+                const rows = document.querySelectorAll('#tableBody tr');
+                for(let i=0; i < rows.length; i++) {
+                    const ket = rows[i].querySelector('.ket').value.trim();
+                    const d = parseInt(rows[i].querySelector('.deb').value.replace(/\./g, '')) || 0;
+                    const k = parseInt(rows[i].querySelector('.kre').value.replace(/\./g, '')) || 0;
+                    
+                    if(ket !== "" || d !== 0 || k !== 0) {
+                        await addDoc(collection(db, "users/" + currentUID + "/arsip/" + namaArsip + "/data"), {
+                            no: i + 1,
+                            tanggal: "", 
+                            keterangan: ket || "-",
+                            debet: d,
+                            kredit: k,
+                            createdAt: Date.now() + i
+                        });
+                    }
+                }
+                localStorage.removeItem('draft_rekap_gabungan'); // Hapus draft setelah berhasil simpan
+                alert("Berhasil Simpan!");
+                window.location.href = "arsip.html";
+            } catch (e) { alert("Error: " + e.message); }
+        };
+    </script>
+</head>
+<body class="bg-gray-100 font-sans p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header Identik dengan Manual/Tahunan -->
+        <div class="flex justify-between items-center mb-6">
+            <a href="index.html" class="text-xs font-black text-blue-600 border-b-2 border-blue-600 pb-1 uppercase tracking-tighter">← KEMBALI</a>
+            <input type="text" id="judulArsip" oninput="saveDraft()" placeholder="NAMA REKAP (CONTOH: REKAP 2020-2025)" class="bg-transparent text-center text-xl font-black text-green-900 outline-none uppercase w-full">
+            <button onclick="tambahBarisTombol()" class="bg-blue-600 text-white text-[10px] px-3 py-2 rounded-lg font-black shadow-md hover:bg-blue-700">+ BARIS</button>
+        </div>
+
+        <!-- Tabel Identik dengan Manual/Tahunan -->
+        <div class="bg-white rounded-xl shadow-2xl overflow-hidden border-2 border-green-800">
+            <table class="w-full border-collapse">
+                <thead>
+                    <tr class="bg-green-800 text-white text-[10px] md:text-xs uppercase tracking-widest">
+                        <th class="p-3 border-r border-green-700 w-10">NO</th>
+                        <th class="p-3 text-left border-r border-green-700">KETERANGAN RANGKUMAN</th>
+                        <th class="p-3 text-right border-r border-green-700">DEBET (RP)</th>
+                        <th class="p-3 text-right border-r border-green-700">KREDIT (RP)</th>
+                        <th class="p-3 text-right">SALDO AKUMULASI</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody">
+                    <!-- Baris diisi via JS -->
+                </tbody>
+                <tfoot class="bg-green-50 font-black text-[12px] md:text-sm border-t-4 border-green-800">
+                    <tr class="text-green-900">
+                        <td colspan="2" class="p-4 text-center border-r border-green-200 uppercase tracking-tighter">JUMLAH TOTAL GABUNGAN</td>
+                        <td id="grandTotalDebet" class="p-4 text-right border-r border-green-200 text-blue-700">0</td>
+                        <td id="grandTotalKredit" class="p-4 text-right border-r border-green-200 text-red-600">0</td>
+                        <td id="grandTotalSaldo" class="p-4 text-right bg-green-100">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <button onclick="simpanKeArsip()" class="mt-8 w-full bg-green-700 hover:bg-green-800 text-white py-4 rounded-2xl font-black shadow-2xl uppercase tracking-widest transition-all transform hover:scale-[1.01] active:scale-95">
+            💾 SIMPAN KE ARSIP PERMANEN
+        </button>
+    </div>
+</body>
+</html>

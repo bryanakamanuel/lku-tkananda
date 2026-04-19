@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rekap Kalender 2026 - TK Ananda</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyC1bXxxh-Nd_lm8Fduo_1kiNmI_3KozwUc",
+            authDomain: "lku-tk-ananda.firebaseapp.com",
+            projectId: "lku-tk-ananda",
+            storageBucket: "lku-tk-ananda.firebasestorage.app",
+            messagingSenderId: "310516809206",
+            appId: "1:310516809206:web:f545e45967fccff5ce1bd7"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        let currentUID = null;
+
+        // PERUBAHAN DISINI: Januari sampai Desember
+        const bulanKalender = ["JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI", "JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER"];
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) { 
+                currentUID = user.uid; 
+                generateRows(); 
+                loadDraft();
+            } else { 
+                window.location.href = "index.html"; 
+            }
+        });
+
+        window.formatInput = (input) => {
+            let value = input.value.replace(/\./g, '');
+            if (!isNaN(value) && value !== "") {
+                input.value = Number(value).toLocaleString('id-ID');
+            }
+            saveDraft();
+            hitung();
+        };
+
+        function generateRows() {
+            const container = document.getElementById('tableBody');
+            let rows = "";
+            bulanKalender.forEach((bln, i) => {
+                rows += `
+                <tr class="border-b border-gray-100 text-xs md:text-sm">
+                    <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r">${i + 1}</td>
+                    <td class="p-3 font-bold text-gray-700 bg-white border-r uppercase">${bln}</td>
+                    <td class="p-1 bg-white border-r">
+                        <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+                    </td>
+                    <td class="p-1 bg-white border-r">
+                        <input type="text" id="k_${i}" oninput="formatInput(this)" class="w-full p-2 text-right text-red-500 outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+                    </td>
+                    <td class="p-3 text-right font-bold text-green-700 bg-gray-50/50" id="s_${i}">0</td>
+                </tr>`;
+            });
+            container.innerHTML = rows;
+        }
+
+        window.hitung = () => {
+            let runningSaldo = 0, tDebet = 0, tKredit = 0;
+            bulanKalender.forEach((_, i) => {
+                const d = parseInt(document.getElementById('d_' + i).value.replace(/\./g, '')) || 0;
+                const k = parseInt(document.getElementById('k_' + i).value.replace(/\./g, '')) || 0;
+                tDebet += d; tKredit += k; runningSaldo += (d - k);
+                const elS = document.getElementById('s_' + i);
+                elS.innerText = runningSaldo.toLocaleString('id-ID');
+                elS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+            });
+            document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
+            document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
+            const elGS = document.getElementById('grandTotalSaldo');
+            elGS.innerText = runningSaldo.toLocaleString('id-ID');
+            elGS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+        };
+
+        function saveDraft() {
+            const values = bulanKalender.map((_, i) => ({
+                d: document.getElementById('d_' + i).value,
+                k: document.getElementById('k_' + i).value
+            }));
+            localStorage.setItem('draft_2026', JSON.stringify({judul: document.getElementById('judulArsip').value, values}));
+        }
+
+        function loadDraft() {
+            const saved = JSON.parse(localStorage.getItem('draft_2026'));
+            if (saved) {
+                document.getElementById('judulArsip').value = saved.judul || "";
+                saved.values.forEach((item, i) => {
+                    if(document.getElementById('d_'+i)) document.getElementById('d_'+i).value = item.d || "";
+                    if(document.getElementById('k_'+i)) document.getElementById('k_'+i).value = item.k || "";
+                });
+                hitung();
+            }
+        }
+
+        window.simpanKeArsip = async () => {
+            const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
+            if(!namaArsip) return alert("Isi Judul Rekap!");
+            if(!confirm("Simpan ke Arsip?")) return;
+
+            try {
+                // Tetap masuk ke koleksi "arsip" agar bisa dibaca di arsip.html yang sudah ada
+                await setDoc(doc(db, "users/" + currentUID + "/arsip", namaArsip), { nama: namaArsip, updatedAt: Date.now() }, { merge: true });
+                for(let i=0; i < bulanKalender.length; i++) {
+                    const d = parseInt(document.getElementById('d_' + i).value.replace(/\./g, '')) || 0;
+                    const k = parseInt(document.getElementById('k_' + i).value.replace(/\./g, '')) || 0;
+                    if(d !== 0 || k !== 0) {
+                        await addDoc(collection(db, "users/" + currentUID + "/arsip/" + namaArsip + "/data"), {
+                            no: i + 1,
+                            tanggal: bulanKalender[i],
+                            keterangan: "-",
+                            debet: d,
+                            kredit: k,
+                            createdAt: Date.now() + i
+                        });
+                    }
+                }
+                localStorage.removeItem('draft_2026');
+                alert("Berhasil Simpan!");
+                window.location.href = "arsip.html";
+            } catch (e) { alert("Error: " + e.message); }
+        };
+    </script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <div class="max-w-5xl mx-auto p-4 md:p-8">
+        <div class="flex justify-between items-center mb-6">
+            <a href="index.html" class="bg-white px-4 py-2 rounded-xl shadow-sm text-xs font-bold text-gray-400 border border-gray-100 hover:text-green-600 transition-all">← KEMBALI</a>
+            <input type="text" id="judulArsip" oninput="saveDraft()" placeholder="REKAP PAJAK 2026" class="bg-transparent text-center text-xl md:text-2xl font-black text-green-800 outline-none uppercase w-64">
+            <div class="w-20"></div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+            <table class="w-full">
+                <thead>
+                    <tr class="bg-green-700 text-white text-[10px] md:text-xs uppercase tracking-widest">
+                        <th class="p-4 border-r border-green-800 w-12">NO</th>
+                        <th class="p-4 text-left border-r border-green-800">BULAN (2026)</th>
+                        <th class="p-4 text-right border-r border-green-800">DEBET</th>
+                        <th class="p-4 text-right border-r border-green-800">KREDIT</th>
+                        <th class="p-4 text-right">SALDO</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+                <tfoot class="bg-green-50/80 font-black text-xs md:text-sm border-t-2 border-green-700">
+                    <tr>
+                        <td colspan="2" class="p-4 text-center text-green-800 border-r uppercase">Total Kalender</td>
+                        <td id="grandTotalDebet" class="p-4 text-right text-green-800 border-r">0</td>
+                        <td id="grandTotalKredit" class="p-4 text-right text-red-600 border-r">0</td>
+                        <td id="grandTotalSaldo" class="p-4 text-right text-green-800">0</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <div class="flex justify-end mt-8">
+            <button onclick="simpanKeArsip()" class="bg-green-600 hover:bg-green-700 text-white px-10 py-4 rounded-xl font-black shadow-lg uppercase active:scale-95 transition-all">
+                💾 SIMPAN REKAP 2026
+            </button>
+        </div>
+    </div>
+</body>
+</html>
