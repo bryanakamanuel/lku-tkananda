@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PSB - Tk Ananda</title>
     <script src="https://cdn.tailwindcss.com"></script>
-     <link rel="icon" type="image/jpg" href="pic/logo.png">
+    <link rel="icon" type="image/jpg" href="pic/logo.png">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -25,7 +25,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         let currentUser = null;
-        window.dbPSB = []; // Simpan data lokal untuk proses arsip
+        window.dbPSB = [];
 
         onAuthStateChanged(auth, (user) => {
             if (user) { 
@@ -36,7 +36,6 @@
             }
         });
 
-        // FORMATTING FUNCTIONS
         window.formatInput = (input) => {
             let v = input.value.replace(/\D/g, "");
             if (v) input.value = new Intl.NumberFormat('id-ID').format(v);
@@ -58,7 +57,6 @@
             const data = {
                 tgl: document.getElementById('psbTgl').value,
                 nama: document.getElementById('psbNama').value,
-                formulir: cleanNumber(document.getElementById('psbFormulir').value),
                 spp: cleanNumber(document.getElementById('psbSpp').value),
                 prasarana: cleanNumber(document.getElementById('psbPrasarana').value),
                 seragam: cleanNumber(document.getElementById('psbSeragam').value),
@@ -93,23 +91,24 @@
                 snap.forEach(d => {
                     const r = d.data();
                     dataTemp.push({ id: d.id, ...r });
-                    const total = r.formulir + r.spp + r.prasarana + r.seragam + r.perlengkapan + r.angs1 + r.angs2 + r.angs3;
+                    
+                    // Hitung Total Tanpa Formulir
+                    const total = (r.spp || 0) + (r.prasarana || 0) + (r.seragam || 0) + (r.perlengkapan || 0) + (r.angs1 || 0) + (r.angs2 || 0) + (r.angs3 || 0);
                     
                     body.innerHTML += `
-                        <tr class="border-b text-[10px] hover:bg-gray-50 uppercase">
-                            <td class="p-2 border text-center">${i++}</td>
+                        <tr class="border-b text-[10px] hover:bg-gray-50 uppercase font-medium">
+                            <td class="p-2 border text-center text-gray-400">${i++}</td>
                             <td class="p-2 border text-center">${r.tgl}</td>
-                            <td class="p-2 border font-bold">${r.nama}</td>
-                            <td class="p-2 border text-right">${r.formulir > 0 ? r.formulir.toLocaleString('id-ID') : '-'}</td>
+                            <td class="p-2 border font-bold text-blue-900">${r.nama}</td>
                             <td class="p-2 border text-right">${r.spp > 0 ? r.spp.toLocaleString('id-ID') : '-'}</td>
                             <td class="p-2 border text-right">${r.prasarana > 0 ? r.prasarana.toLocaleString('id-ID') : '-'}</td>
                             <td class="p-2 border text-right">${r.seragam > 0 ? r.seragam.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right bg-orange-50 font-semibold">${r.perlengkapan > 0 ? r.perlengkapan.toLocaleString('id-ID') : '-'}</td>
+                            <td class="p-2 border text-right bg-orange-50 font-bold text-orange-800">${r.perlengkapan > 0 ? r.perlengkapan.toLocaleString('id-ID') : '-'}</td>
                             <td class="p-2 border text-right bg-yellow-50/50">${r.angs1 > 0 ? r.angs1.toLocaleString('id-ID') : '-'}</td>
                             <td class="p-2 border text-right bg-yellow-50/50">${r.angs2 > 0 ? r.angs2.toLocaleString('id-ID') : '-'}</td>
                             <td class="p-2 border text-right bg-yellow-50/50">${r.angs3 > 0 ? r.angs3.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right font-bold bg-green-50 text-green-800">${total.toLocaleString('id-ID')}</td>
-                            <td class="p-2 border text-[9px] lowercase">${r.ket}</td>
+                            <td class="p-2 border text-right font-black bg-green-100 text-green-900">${total.toLocaleString('id-ID')}</td>
+                            <td class="p-2 border text-[9px] normal-case text-gray-500 italic">${r.ket || '-'}</td>
                             <td class="p-2 border text-center">
                                 <button onclick="hapusPSB('${d.id}')" class="text-red-400 hover:text-red-600">✕</button>
                             </td>
@@ -125,10 +124,8 @@
             }
         };
 
-        // --- FUNGSI ARSIP KHUSUS PSB ---
         window.arsipkanPSB = async () => {
             if (!currentUser || window.dbPSB.length === 0) return Swal.fire("Info", "Tidak ada data untuk diarsipkan", "info");
-            
             const { value: namaArsip } = await Swal.fire({
                 title: 'Arsipkan Pendaftaran?',
                 text: "Data akan dipindah ke folder arsip khusus PSB",
@@ -137,117 +134,94 @@
                 showCancelButton: true,
                 confirmButtonText: 'Proses Arsip'
             });
-
             if (!namaArsip) return;
-
             Swal.fire({ title: 'Memindahkan data...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
-
             try {
-                // Simpan nama folder arsip PSB
-                await setDoc(doc(db, `users/${currentUser.uid}/arsip_psb`, namaArsip), { 
-                    nama: namaArsip, 
-                    tipe: "PSB", 
-                    createdAt: Date.now() 
-                });
-
-                // Pindahkan setiap data satu per satu
+                await setDoc(doc(db, `users/${currentUser.uid}/arsip_psb`, namaArsip), { nama: namaArsip, tipe: "PSB", createdAt: Date.now() });
                 for (const item of window.dbPSB) {
                     await addDoc(collection(db, `users/${currentUser.uid}/arsip_psb/${namaArsip}/data`), item);
                     await deleteDoc(doc(db, `users/${currentUser.uid}/psb`, item.id));
                 }
-
                 Swal.fire('Berhasil!', `Data telah dipindah ke arsip: ${namaArsip}`, 'success');
-            } catch (e) {
-                Swal.fire("Gagal", e.message, "error");
-            }
+            } catch (e) { Swal.fire("Gagal", e.message, "error"); }
         };
     </script>
 </head>
 <body class="bg-gray-100 p-2 md:p-6 font-sans">
-    <div class="max-w-[1500px] mx-auto bg-white p-4 shadow-xl rounded-lg">
-        <!-- HEADER -->
-        <div class="flex justify-between items-center mb-4 border-b pb-3">
+    <div class="max-w-[1500px] mx-auto bg-white p-4 shadow-xl rounded-xl border border-gray-200">
+        <div class="flex justify-between items-center mb-6 border-b-2 border-blue-50 pb-4">
             <h1 class="text-xl font-black text-blue-900 uppercase tracking-tighter">Pendaftaran PSB TK Ananda</h1>
             <div class="flex gap-2">
-                <button onclick="arsipkanPSB()" class="text-[10px] bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-yellow-700 uppercase">Arsipkan Data</button>
-                <a href="index.html" class="text-[10px] bg-gray-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-gray-700">KEMBALI KE LKU</a>
+                <button onclick="arsipkanPSB()" class="text-[10px] bg-amber-600 text-white px-4 py-2 rounded-lg font-black hover:bg-amber-700 uppercase shadow-md transition-all">Arsipkan Data</button>
+                <a href="index.html" class="text-[10px] bg-slate-700 text-white px-4 py-2 rounded-lg font-black hover:bg-slate-800 uppercase shadow-md transition-all">KEMBALI KE LKU</a>
             </div>
         </div>
 
-        <!-- FORM INPUT (Sama seperti sebelumnya) -->
-        <form id="formPSB" class="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-2 mb-6 bg-blue-50 p-4 rounded-lg border border-blue-100 shadow-inner">
+        <form id="formPSB" class="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-3 mb-8 bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-inner">
             <div class="col-span-1">
-                <label class="text-[9px] font-black uppercase text-blue-700">Tanggal</label>
-                <input type="text" id="psbTgl" onkeyup="formatTanggal(this)" placeholder="DD/MM/YYYY" maxlength="10" class="w-full p-2 text-xs border rounded shadow-sm">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Tanggal</label>
+                <input type="text" id="psbTgl" onkeyup="formatTanggal(this)" placeholder="DD/MM/YYYY" maxlength="10" class="w-full p-2 text-xs border border-blue-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
             </div>
             <div class="col-span-2">
-                <label class="text-[9px] font-black uppercase text-blue-700">Nama Anak</label>
-                <input type="text" id="psbNama" placeholder="NAMA LENGKAP" class="w-full p-2 text-xs border rounded uppercase shadow-sm">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Nama Anak</label>
+                <input type="text" id="psbNama" placeholder="NAMA LENGKAP" class="w-full p-2 text-xs border border-blue-200 rounded-lg uppercase shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
             </div>
             <div>
-                <label class="text-[9px] font-black uppercase text-blue-700">Formulir</label>
-                <input type="text" id="psbFormulir" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border rounded text-right">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">SPP</label>
+                <input type="text" id="psbSpp" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
             </div>
             <div>
-                <label class="text-[9px] font-black uppercase text-blue-700">SPP</label>
-                <input type="text" id="psbSpp" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border rounded text-right">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Prasarana</label>
+                <input type="text" id="psbPrasarana" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
             </div>
             <div>
-                <label class="text-[9px] font-black uppercase text-blue-700">Prasarana</label>
-                <input type="text" id="psbPrasarana" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border rounded text-right">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Seragam</label>
+                <input type="text" id="psbSeragam" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
             </div>
             <div>
-                <label class="text-[9px] font-black uppercase text-blue-700">Seragam</label>
-                <input type="text" id="psbSeragam" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border rounded text-right">
+                <label class="text-[9px] font-black uppercase text-orange-800 mb-1 block">Perlengkapan</label>
+                <input type="text" id="psbPerlengkapan" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-orange-200 rounded-lg text-right bg-orange-50 outline-none">
             </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-orange-700">Perlengkapan</label>
-                <input type="text" id="psbPerlengkapan" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border rounded text-right bg-orange-50">
-            </div>
-            <div class="col-span-1 border-l border-blue-200 pl-2">
-                <label class="text-[8px] font-black text-yellow-800 uppercase block text-center">Angsuran Kegiatan</label>
+            <div class="col-span-2 border-l border-blue-200 pl-3">
+                <label class="text-[8px] font-black text-amber-800 uppercase block text-center mb-1">Angsuran Kegiatan</label>
                 <div class="flex gap-1">
-                    <input type="text" id="psbAngs1" onkeyup="formatInput(this)" placeholder="1x" class="w-1/3 p-1 text-[9px] border rounded text-right">
-                    <input type="text" id="psbAngs2" onkeyup="formatInput(this)" placeholder="2x" class="w-1/3 p-1 text-[9px] border rounded text-right">
-                    <input type="text" id="psbAngs3" onkeyup="formatInput(this)" placeholder="3x" class="w-1/3 p-1 text-[9px] border rounded text-right">
+                    <input type="text" id="psbAngs1" onkeyup="formatInput(this)" placeholder="1x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
+                    <input type="text" id="psbAngs2" onkeyup="formatInput(this)" placeholder="2x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
+                    <input type="text" id="psbAngs3" onkeyup="formatInput(this)" placeholder="3x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
                 </div>
             </div>
             <div class="col-span-1">
-                <label class="text-[9px] font-black uppercase text-blue-700">Keterangan</label>
-                <input type="text" id="psbKet" placeholder="..." class="w-full p-2 text-xs border rounded">
+                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Keterangan</label>
+                <input type="text" id="psbKet" placeholder="..." class="w-full p-2 text-xs border border-blue-200 rounded-lg outline-none">
             </div>
             <div class="flex items-end">
-                <button type="button" onclick="simpanPSB()" class="w-full bg-blue-700 text-white py-2 rounded font-black text-[10px] hover:bg-blue-800 shadow-md transition-all uppercase">SIMPAN</button>
+                <button type="button" onclick="simpanPSB()" class="w-full bg-blue-700 text-white py-2 rounded-lg font-black text-[10px] hover:bg-blue-800 shadow-lg transition-all uppercase tracking-widest">SIMPAN</button>
             </div>
         </form>
 
-        <!-- TABLE DATA -->
-        <div class="overflow-x-auto shadow-md rounded-lg">
-            <table class="w-full border-collapse border border-gray-400">
+        <div class="overflow-x-auto shadow-2xl rounded-xl border border-gray-300">
+            <table class="w-full border-collapse">
                 <thead>
-                    <tr class="bg-blue-900 text-white text-[9px] uppercase">
-                        <th rowspan="2" class="p-2 border">No</th>
-                        <th rowspan="2" class="p-2 border">Tanggal</th>
-                        <th rowspan="2" class="p-2 border">Nama Anak</th>
-                        <th rowspan="2" class="p-2 border">Biaya Form</th>
-                        <th rowspan="2" class="p-2 border">SPP</th>
-                        <th rowspan="2" class="p-2 border">Biaya Prasarana</th>
-                        <th rowspan="2" class="p-2 border">Biaya Seragam</th>
-                        <th rowspan="2" class="p-2 border bg-orange-800 text-white">Biaya Perlengkapan</th>
-                        <th colspan="3" class="p-1 border bg-yellow-700 text-white text-center">Angsuran</th>
-                        <th rowspan="2" class="p-2 border bg-green-800 text-white">Total</th>
-                        <th rowspan="2" class="p-2 border">Keterangan</th>
-                        <th rowspan="2" class="p-2 border w-6"></th>
+                    <tr class="bg-blue-900 text-white text-[9px] uppercase tracking-wider">
+                        <th rowspan="2" class="p-3 border-r border-blue-800 w-10">No</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800 w-24">Tanggal</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800">Nama Anak</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800">SPP</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800">Prasarana</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800">Seragam</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800 bg-orange-800">Perlengkapan</th>
+                        <th colspan="3" class="p-2 border-b border-blue-800 bg-amber-700 text-center">Angsuran Kegiatan</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800 bg-green-800">Total</th>
+                        <th rowspan="2" class="p-3 border-r border-blue-800">Keterangan</th>
+                        <th rowspan="2" class="p-3 w-8"></th>
                     </tr>
-                    <tr class="bg-yellow-600 text-white text-[9px] uppercase">
-                        <th class="p-1 border w-16">1x</th>
-                        <th class="p-1 border w-16">2x</th>
-                        <th class="p-1 border w-16">3x</th>
+                    <tr class="bg-amber-600 text-white text-[8px] uppercase">
+                        <th class="p-2 border-r border-amber-500 w-20">Ke-1</th>
+                        <th class="p-2 border-r border-amber-500 w-20">Ke-2</th>
+                        <th class="p-2 border-r border-amber-500 w-20">Ke-3</th>
                     </tr>
                 </thead>
-                <tbody id="bodyPSB" class="bg-white">
-                    <!-- Data masuk di sini -->
-                </tbody>
+                <tbody id="bodyPSB" class="bg-white"></tbody>
             </table>
         </div>
     </div>
