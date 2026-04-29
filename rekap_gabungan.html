@@ -82,7 +82,7 @@
             tr.innerHTML = `
                 <td class="p-2 text-center font-bold text-gray-400 bg-gray-50 border-r w-10">${rowCount + 1}</td>
                 <td class="p-0 bg-white border-r">
-                    <input type="text" class="ket w-full p-2 outline-none focus:bg-yellow-50 uppercase font-medium" placeholder="..." value="${ket}" oninput="saveDraft()">
+                   <input type="text" class="ket min-w-[200px] w-full p-2 outline-none focus:bg-yellow-50 uppercase font-medium" placeholder="..." value="${ket}" oninput="saveDraft()">
                 </td>
                 <td class="p-0 bg-white border-r">
                     <input type="text" class="deb w-full p-2 text-right outline-none focus:bg-green-50 font-bold" placeholder="0" value="${deb}" oninput="formatInput(this)">
@@ -165,8 +165,8 @@
         </div>
 
         <!-- Tabel Identik dengan Manual/Tahunan -->
-        <div class="bg-white rounded-xl shadow-2xl overflow-hidden border-2 border-green-800">
-            <table class="w-full border-collapse">
+        <div class="bg-white rounded-xl shadow-2xl overflow-x-auto border-2 border-green-800">
+    <table class="w-full border-collapse min-w-[800px]"> <thead>
                 <thead>
                     <tr class="bg-green-800 text-white text-[10px] md:text-xs uppercase tracking-widest">
                         <th class="p-3 border-r border-green-700 w-10">NO</th>
