@@ -66,23 +66,40 @@
             container.innerHTML = rows;
         }
 
-        window.hitung = () => {
-            let runningSaldo = 0, tDebet = 0, tKredit = 0;
-            bulanKalender.forEach((_, i) => {
-                const d = parseInt(document.getElementById('d_' + i).value.replace(/\./g, '')) || 0;
-                const k = parseInt(document.getElementById('k_' + i).value.replace(/\./g, '')) || 0;
-                tDebet += d; tKredit += k; runningSaldo += (d - k);
-                const elS = document.getElementById('s_' + i);
-                elS.innerText = runningSaldo.toLocaleString('id-ID');
-                elS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
-            });
-            document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
-            document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
-            const elGS = document.getElementById('grandTotalSaldo');
-            elGS.innerText = runningSaldo.toLocaleString('id-ID');
-            elGS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
-        };
+      window.hitung = () => {
+    let runningSaldo = 0, tDebet = 0, tKredit = 0;
+    
+    bulanKalender.forEach((_, i) => {
+        const d = parseInt(document.getElementById('d_' + i).value.replace(/\./g, '')) || 0;
+        const k = parseInt(document.getElementById('k_' + i).value.replace(/\./g, '')) || 0;
+        
+        // Hitung selisih khusus untuk baris ini saja
+        const saldoPerBaris = d - k;
+        
+        tDebet += d; 
+        tKredit += k; 
+        runningSaldo += saldoPerBaris; // runningSaldo tetap dihitung untuk total akhir di bawah
 
+        const elS = document.getElementById('s_' + i);
+        
+        // MODIFIKASI: Yang ditampilkan di kolom kanan adalah saldoPerBaris (bukan akumulasi)
+        elS.innerText = saldoPerBaris.toLocaleString('id-ID');
+        
+        // Warna teks berdasarkan hasil baris tersebut
+        if (saldoPerBaris < 0) elS.style.color = "#ef4444"; // Merah jika minus
+        else if (saldoPerBaris > 0) elS.style.color = "#15803d"; // Hijau jika ada sisa
+        else elS.style.color = "#9ca3af"; // Abu-abu jika nol
+    });
+
+    // Menampilkan Total di bagian bawah (Footer)
+    document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
+    document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
+    
+    // Total keseluruhan tetap menggunakan akumulasi runningSaldo agar akurat
+    const elGS = document.getElementById('grandTotalSaldo');
+    elGS.innerText = runningSaldo.toLocaleString('id-ID');
+    elGS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+};
         function saveDraft() {
             const values = bulanKalender.map((_, i) => ({
                 d: document.getElementById('d_' + i).value,

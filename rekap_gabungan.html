@@ -100,23 +100,40 @@
             saveDraft();
         };
 
-        window.hitungTotal = () => {
-            let runningSaldo = 0, tDebet = 0, tKredit = 0;
-            const rows = document.querySelectorAll('#tableBody tr');
-            rows.forEach(row => {
-                const d = parseInt(row.querySelector('.deb').value.replace(/\./g, '')) || 0;
-                const k = parseInt(row.querySelector('.kre').value.replace(/\./g, '')) || 0;
-                tDebet += d; tKredit += k; runningSaldo += (d - k);
-                const salCell = row.querySelector('.sal');
-                salCell.innerText = runningSaldo.toLocaleString('id-ID');
-                salCell.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
-            });
-            document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
-            document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
-            const elGS = document.getElementById('grandTotalSaldo');
-            elGS.innerText = runningSaldo.toLocaleString('id-ID');
-            elGS.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
-        };
+       window.hitungTotal = () => {
+    let tDebet = 0, tKredit = 0, totalSaldoAkhir = 0;
+    const rows = document.querySelectorAll('#tableBody tr');
+    
+    rows.forEach(row => {
+        const d = parseInt(row.querySelector('.deb').value.replace(/\./g, '')) || 0;
+        const k = parseInt(row.querySelector('.kre').value.replace(/\./g, '')) || 0;
+        
+        // 1. Hitung Saldo per baris (Hanya Debet - Kredit di baris tersebut)
+        const saldoPerBaris = d - k; 
+        
+        // 2. Akumulasi untuk total di bawah
+        tDebet += d; 
+        tKredit += k;
+        totalSaldoAkhir += saldoPerBaris;
+
+        // 3. Tampilkan saldo per baris di kolom kanan
+        const salCell = row.querySelector('.sal');
+        salCell.innerText = saldoPerBaris.toLocaleString('id-ID');
+        
+        // Warna: merah jika minus, hijau jika ada isinya, abu jika nol
+        if (saldoPerBaris < 0) salCell.style.color = "#ef4444";
+        else if (saldoPerBaris > 0) salCell.style.color = "#15803d";
+        else salCell.style.color = "#9ca3af"; 
+    });
+
+    // 4. Update Total Keseluruhan di bagian Footer (Bawah)
+    document.getElementById('grandTotalDebet').innerText = tDebet.toLocaleString('id-ID');
+    document.getElementById('grandTotalKredit').innerText = tKredit.toLocaleString('id-ID');
+    
+    const elGS = document.getElementById('grandTotalSaldo');
+    elGS.innerText = totalSaldoAkhir.toLocaleString('id-ID');
+    elGS.style.color = totalSaldoAkhir < 0 ? "#ef4444" : "#15803d";
+};
 
         window.simpanKeArsip = async () => {
             const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
