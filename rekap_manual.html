@@ -20,42 +20,47 @@
             appId: "1:310516809206:web:f545e45967fccff5ce1bd7"
         };
 
+      // ... (firebaseConfig tetap sama seperti milik Bunda) ...
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         let currentUID = null;
 
-        const bulanIndo = ["JULI", "AGUSTUS", "SEPTEMBER", "OKTOBER", "NOVEMBER", "DESEMBER", "JANUARI", "FEBRUARI", "MARET", "APRIL", "MEI", "JUNI"];
+        // Kita tetapkan jumlah baris tetap 12, tapi isinya kosong
+        const jumlahBaris = 12;
 
         onAuthStateChanged(auth, (user) => {
             if (user) { 
                 currentUID = user.uid; 
-                generateRows(); 
-                loadDraft();
+                generateRows(); // 1. Gambar kotak-kotaknya dulu
+                loadDraft();    // 2. Isi kotaknya dengan data dari memori HP
             } else { 
                 window.location.href = "index.html"; 
             }
         });
 
-        // Fungsi Format Ribuan
+        // Fungsi Format Ribuan & Langsung Simpan
         window.formatInput = (input) => {
             let value = input.value.replace(/\./g, '');
             if (!isNaN(value) && value !== "") {
                 input.value = Number(value).toLocaleString('id-ID');
             }
-            saveDraft();
+            saveDraft(); // Autosave setiap kali input angka
             hitung();
         };
 
-        // Fungsi Generate Tabel (Nomor Urut Pasti Angka)
+        // Fungsi Generate Tabel (Input Kosong)
         function generateRows() {
             const container = document.getElementById('tableBody');
             let rows = "";
-            for (let i = 0; i < bulanIndo.length; i++) {
+            for (let i = 0; i < jumlahBaris; i++) {
                 rows += `
                 <tr class="border-b border-gray-100 text-xs md:text-sm">
                     <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r">${i + 1}</td>
-                    <td class="p-3 font-bold text-gray-700 bg-white border-r uppercase">${bulanIndo[i]}</td>
+                    <td class="p-1 bg-white border-r">
+                        <input type="text" id="b_${i}" oninput="saveDraft()" class="w-full p-2 outline-none focus:bg-yellow-50 font-bold uppercase" placeholder="">
+                    </td>
                     <td class="p-1 bg-white border-r">
                         <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
                     </td>
@@ -68,52 +73,44 @@
             container.innerHTML = rows;
         }
 
-        // Fungsi Hitung Saldo (Pasti Akurat)
-       // Fungsi Hitung Saldo (Output Per Baris, Total Akurat)
-window.hitung = () => {
-    let runningSaldo = 0; // Tetap dihitung untuk total akhir di bawah
-    let totalDebet = 0;
-    let totalKredit = 0;
+        // Fungsi Hitung Saldo
+        window.hitung = () => {
+            let runningSaldo = 0;
+            let totalDebet = 0;
+            let totalKredit = 0;
 
-    for (let i = 0; i < bulanIndo.length; i++) {
-        const dVal = document.getElementById('d_' + i).value.replace(/\./g, '') || "0";
-        const kVal = document.getElementById('k_' + i).value.replace(/\./g, '') || "0";
-        
-        const d = parseInt(dVal);
-        const k = parseInt(kVal);
-        
-        // HITUNG SELISIH BARIS INI SAJA
-        const saldoBulanIni = d - k;
-        
-        totalDebet += d;
-        totalKredit += k;
-        runningSaldo += saldoBulanIni; // Akumulasi untuk angka paling bawah
-        
-        const elSaldo = document.getElementById('s_' + i);
-        
-        // TAMPILKAN HASIL PER BARIS DI TABEL
-        elSaldo.innerText = saldoBulanIni.toLocaleString('id-ID');
-        
-        // Warna per baris: Merah jika minus, Hijau jika surplus
-        if (saldoBulanIni < 0) elSaldo.style.color = "#ef4444";
-        else if (saldoBulanIni > 0) elSaldo.style.color = "#15803d";
-        else elSaldo.style.color = "#9ca3af"; 
-    }
+            for (let i = 0; i < jumlahBaris; i++) {
+                const dVal = document.getElementById('d_' + i).value.replace(/\./g, '') || "0";
+                const kVal = document.getElementById('k_' + i).value.replace(/\./g, '') || "0";
+                const d = parseInt(dVal);
+                const k = parseInt(kVal);
+                const saldoBulanIni = d - k;
+                
+                totalDebet += d;
+                totalKredit += k;
+                runningSaldo += saldoBulanIni;
+                
+                const elSaldo = document.getElementById('s_' + i);
+                elSaldo.innerText = saldoBulanIni.toLocaleString('id-ID');
+                
+                if (saldoBulanIni < 0) elSaldo.style.color = "#ef4444";
+                else if (saldoBulanIni > 0) elSaldo.style.color = "#15803d";
+                else elSaldo.style.color = "#9ca3af"; 
+            }
 
-    // Update bagian bawah (Footer)
-    document.getElementById('grandTotalDebet').innerText = totalDebet.toLocaleString('id-ID');
-    document.getElementById('grandTotalKredit').innerText = totalKredit.toLocaleString('id-ID');
-    
-    // Total Akhir tetap menunjukkan sisa saldo keseluruhan
-    const elGrandSaldo = document.getElementById('grandTotalSaldo');
-    elGrandSaldo.innerText = runningSaldo.toLocaleString('id-ID');
-    elGrandSaldo.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
-};
+            document.getElementById('grandTotalDebet').innerText = totalDebet.toLocaleString('id-ID');
+            document.getElementById('grandTotalKredit').innerText = totalKredit.toLocaleString('id-ID');
+            const elGrandSaldo = document.getElementById('grandTotalSaldo');
+            elGrandSaldo.innerText = runningSaldo.toLocaleString('id-ID');
+            elGrandSaldo.style.color = runningSaldo < 0 ? "#ef4444" : "#15803d";
+        };
 
-        function saveDraft() {
+        // FUNGSI UTAMA: Simpan ke Memori HP
+        window.saveDraft = () => {
             const values = [];
-            for (let i = 0; i < bulanIndo.length; i++) {
+            for (let i = 0; i < jumlahBaris; i++) {
                 values.push({
+                    b: document.getElementById('b_' + i).value, // Simpan keterangan bulan
                     d: document.getElementById('d_' + i).value,
                     k: document.getElementById('k_' + i).value
                 });
@@ -122,24 +119,38 @@ window.hitung = () => {
                 judul: document.getElementById('judulArsip').value,
                 values: values
             };
-            localStorage.setItem('rekap_draft', JSON.stringify(draftData));
-        }
+            localStorage.setItem('rekap_manual_draft', JSON.stringify(draftData));
+        };
 
-        function loadDraft() {
-            const saved = localStorage.getItem('rekap_draft');
-            if (saved) {
-                const data = JSON.parse(saved);
-                document.getElementById('judulArsip').value = data.judul || "";
-                for (let i = 0; i < bulanIndo.length; i++) {
-                    if(data.values[i]) {
-                        document.getElementById('d_' + i).value = data.values[i].d || "";
-                        document.getElementById('k_' + i).value = data.values[i].k || "";
-                    }
-                }
-                hitung();
+        // FUNGSI UTAMA: Ambil dari Memori HP
+       function loadDraft() {
+    // Coba cek di nama kunci baru dulu, kalau kosong cek nama kunci lama
+    const savedNew = localStorage.getItem('rekap_manual_draft');
+    const savedOld = localStorage.getItem('rekap_draft');
+    const saved = savedNew || savedOld; 
+
+    if (saved) {
+        const data = JSON.parse(saved);
+        document.getElementById('judulArsip').value = data.judul || "";
+        
+        // Kita pakai jumlahBaris = 12 sesuai kode terbaru
+        for (let i = 0; i < 12; i++) {
+            if(data.values && data.values[i]) {
+                // Pastikan ID input b_, d_, dan k_ sudah ada di tabel
+                const inputB = document.getElementById('b_' + i);
+                const inputD = document.getElementById('d_' + i);
+                const inputK = document.getElementById('k_' + i);
+
+                if(inputB) inputB.value = data.values[i].b || "";
+                if(inputD) inputD.value = data.values[i].d || "";
+                if(inputK) inputK.value = data.values[i].k || "";
             }
         }
+        hitung();
+    }
+}
 
+        // Simpan ke Firebase
         window.simpanKeArsip = async () => {
             const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
             if(!namaArsip) return alert("Mohon isi Judul Rekap!");
@@ -151,24 +162,23 @@ window.hitung = () => {
                     updatedAt: Date.now() 
                 }, { merge: true });
 
-                for(let i=0; i < bulanIndo.length; i++) {
+                for(let i=0; i < jumlahBaris; i++) {
+                    const blnVal = document.getElementById('b_' + i).value || "-";
                     const dVal = document.getElementById('d_' + i).value.replace(/\./g, '') || "0";
                     const kVal = document.getElementById('k_' + i).value.replace(/\./g, '') || "0";
-                    const debet = parseInt(dVal);
-                    const kredit = parseInt(kVal);
                     
-                    if(debet !== 0 || kredit !== 0) {
+                    if(parseInt(dVal) !== 0 || parseInt(kVal) !== 0 || blnVal !== "-") {
                         await addDoc(collection(db, "users/" + currentUID + "/arsip/" + namaArsip + "/data"), {
                             no: i + 1,
-                            tanggal: bulanIndo[i],
+                            tanggal: blnVal.toUpperCase(),
                             keterangan: "-",
-                            debet: debet,
-                            kredit: kredit,
+                            debet: parseInt(dVal),
+                            kredit: parseInt(kVal),
                             createdAt: Date.now() + i
                         });
                     }
                 }
-                localStorage.removeItem('rekap_draft');
+                localStorage.removeItem('rekap_manual_draft'); // Hapus draft jika sudah sukses simpan permanen
                 alert("Berhasil disimpan!");
                 window.location.href = "arsip.html";
             } catch (e) { alert("Error: " + e.message); }
