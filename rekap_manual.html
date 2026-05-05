@@ -51,6 +51,7 @@
         };
 
         // Fungsi Generate Tabel (Input Kosong)
+        // Fungsi Generate Tabel (Menggunakan Textarea agar tulisan bisa ke bawah)
         function generateRows() {
             const container = document.getElementById('tableBody');
             let rows = "";
@@ -58,8 +59,14 @@
                 rows += `
                 <tr class="border-b border-gray-100 text-xs md:text-sm">
                     <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r">${i + 1}</td>
-                    <td class="p-1 bg-white border-r">
-                        <input type="text" id="b_${i}" oninput="saveDraft()" class="w-full p-2 outline-none focus:bg-yellow-50 font-bold uppercase" placeholder="">
+                    <td class="p-1 bg-white border-r min-w-[150px]">
+                        <!-- Menggunakan Textarea agar tulisan panjang otomatis ke bawah -->
+                        <textarea id="b_${i}" oninput="saveDraft()" 
+                            class="w-full p-2 outline-none focus:bg-yellow-50 font-bold uppercase resize-none bg-transparent" 
+                            rows="1" 
+                            placeholder="Isi Bulan/Ket"
+                            style="display: block; overflow:hidden; min-height: 40px;"
+                            onkeyup="this.style.height = 'auto'; this.style.height = this.scrollHeight + 'px'"></textarea>
                     </td>
                     <td class="p-1 bg-white border-r">
                         <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
