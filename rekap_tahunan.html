@@ -47,24 +47,26 @@
         };
 
         function generateRows() {
-            const container = document.getElementById('tableBody');
-            let rows = "";
-            bulanKalender.forEach((bln, i) => {
-                rows += `
-                <tr class="border-b border-gray-100 text-xs md:text-sm">
-                    <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r">${i + 1}</td>
-                    <td class="p-3 font-bold text-gray-700 bg-white border-r uppercase">${bln}</td>
-                    <td class="p-1 bg-white border-r">
-                        <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
-                    </td>
-                    <td class="p-1 bg-white border-r">
-                        <input type="text" id="k_${i}" oninput="formatInput(this)" class="w-full p-2 text-right text-red-500 outline-none focus:bg-yellow-50 font-bold" placeholder="0">
-                    </td>
-                    <td class="p-3 text-right font-bold text-green-700 bg-gray-50/50" id="s_${i}">0</td>
-                </tr>`;
-            });
-            container.innerHTML = rows;
-        }
+    const container = document.getElementById('tableBody');
+    let rows = "";
+    bulanKalender.forEach((bln, i) => {
+        rows += `
+        <tr class="border-b border-gray-100 text-xs md:text-sm">
+            <td class="p-3 text-center font-bold text-gray-400 bg-gray-50 border-r w-12">${i + 1}</td>
+            <td class="p-3 font-bold text-gray-700 bg-white border-r uppercase min-w-[120px] whitespace-normal">
+                ${bln}
+            </td>
+            <td class="p-1 bg-white border-r">
+                <input type="text" id="d_${i}" oninput="formatInput(this)" class="w-full p-2 text-right outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+            </td>
+            <td class="p-1 bg-white border-r">
+                <input type="text" id="k_${i}" oninput="formatInput(this)" class="w-full p-2 text-right text-red-500 outline-none focus:bg-yellow-50 font-bold" placeholder="0">
+            </td>
+            <td class="p-3 text-right font-bold text-green-700 bg-gray-50/50 min-w-[100px]" id="s_${i}">0</td>
+        </tr>`;
+    });
+    container.innerHTML = rows;
+}
 
       window.hitung = () => {
     let runningSaldo = 0, tDebet = 0, tKredit = 0;
@@ -157,18 +159,21 @@
                 <div class="w-20"></div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
-            <table class="w-full">
-                <thead>
-                    <tr class="bg-green-700 text-white text-[10px] md:text-xs uppercase tracking-widest">
-                        <th class="p-4 border-r border-green-800 w-12">NO</th>
-                        <th class="p-4 text-left border-r border-green-800">BULAN</th>
-                        <th class="p-4 text-right border-r border-green-800">DEBET</th>
-                        <th class="p-4 text-right border-r border-green-800">KREDIT</th>
-                        <th class="p-4 text-right">SALDO</th>
-                    </tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
+        <div class="bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
+    
+    <div class="overflow-x-auto"> 
+        
+        <table class="w-full min-w-[600px]">
+            <thead>
+                <tr class="bg-green-700 text-white text-[10px] md:text-xs uppercase tracking-widest">
+                    <th class="p-4 border-r border-green-800 w-12">NO</th>
+                    <th class="p-4 text-left border-r border-green-800">BULAN</th>
+                    <th class="p-4 text-right border-r border-green-800">DEBET</th>
+                    <th class="p-4 text-right border-r border-green-800">KREDIT</th>
+                    <th class="p-4 text-right">SALDO</th>
+                </tr>
+            </thead>
+               <tbody id="tableBody"></tbody>
                 <tfoot class="bg-green-50/80 font-black text-xs md:text-sm border-t-2 border-green-700">
                     <tr>
                         <td colspan="2" class="p-4 text-center text-green-800 border-r uppercase">Total Kalender</td>
