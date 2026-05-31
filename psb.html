@@ -52,71 +52,140 @@
             return parseFloat(str.toString().replace(/\./g, "")) || 0; 
         }
 
-        window.simpanPSB = async () => {
-            if(!currentUser) return;
-            const data = {
-                tgl: document.getElementById('psbTgl').value,
-                nama: document.getElementById('psbNama').value,
-                spp: cleanNumber(document.getElementById('psbSpp').value),
-                prasarana: cleanNumber(document.getElementById('psbPrasarana').value),
-                seragam: cleanNumber(document.getElementById('psbSeragam').value),
-                perlengkapan: cleanNumber(document.getElementById('psbPerlengkapan').value),
-                angs1: cleanNumber(document.getElementById('psbAngs1').value),
-                angs2: cleanNumber(document.getElementById('psbAngs2').value),
-                angs3: cleanNumber(document.getElementById('psbAngs3').value),
-                ket: document.getElementById('psbKet').value,
-                createdAt: Date.now()
-            };
+        // ... kode Firebase tetap sama ...
 
-            if(!data.nama || data.tgl.length < 10) {
-                return Swal.fire("Lengkapi Data", "Nama & Tanggal (DD/MM/YYYY) wajib diisi", "warning");
-            }
+// Nilai Mutlak
+const BIAYA_TETAP = {
+    spp: 350000,
+    prasarana: 1200000,
+    perlengkapan: 1000000,
+    seragam: 1000000,
+    kegiatan: 1500000
+};
 
-            try {
-                await addDoc(collection(db, `users/${currentUser.uid}/psb`), data);
-                Swal.fire("Berhasil", "Data tersimpan", "success");
-                document.getElementById('formPSB').reset();
-            } catch (e) { 
-                Swal.fire("Error", e.message, "error"); 
-            }
-        };
+window.simpanPSB = async () => {
+    if(!currentUser) return;
+    
+    const tglInput = document.getElementById('psbTgl').value;
+    const data = {
+        tgl: tglInput,
+        nama: document.getElementById('psbNama').value,
+        spp: BIAYA_TETAP.spp,
+        prasarana: BIAYA_TETAP.prasarana,
+        seragam: BIAYA_TETAP.seragam,
+        perlengkapan: BIAYA_TETAP.perlengkapan,
+        kegiatan: BIAYA_TETAP.kegiatan,
+        angs1: cleanNumber(document.getElementById('psbAngs1').value),
+        tglAngs1: cleanNumber(document.getElementById('psbAngs1').value) > 0 ? tglInput : "",
+        angs2: cleanNumber(document.getElementById('psbAngs2').value),
+        tglAngs2: cleanNumber(document.getElementById('psbAngs2').value) > 0 ? tglInput : "",
+        angs3: cleanNumber(document.getElementById('psbAngs3').value),
+        tglAngs3: cleanNumber(document.getElementById('psbAngs3').value) > 0 ? tglInput : "",
+        diskon: cleanNumber(document.getElementById('psbDiskon').value),
+        createdAt: Date.now()
+    };
 
-        function loadDataPSB() {
-            const q = query(collection(db, `users/${currentUser.uid}/psb`), orderBy("createdAt", "desc"));
-            onSnapshot(q, (snap) => {
-                const body = document.getElementById('bodyPSB');
-                body.innerHTML = "";
-                const dataTemp = [];
-                let i = 1;
-                snap.forEach(d => {
-                    const r = d.data();
-                    dataTemp.push({ id: d.id, ...r });
+    if(!data.nama || data.tgl.length < 10) {
+        return Swal.fire("Lengkapi Data", "Nama & Tanggal wajib diisi", "warning");
+    }
+
+    try {
+        await addDoc(collection(db, `users/${currentUser.uid}/psb`), data);
+        Swal.fire("Berhasil", "Data tersimpan", "success");
+        document.getElementById('psbNama').value = "";
+        document.getElementById('psbDiskon').value = "";
+        document.getElementById('psbAngs1').value = "";
+        document.getElementById('psbAngs2').value = "";
+        document.getElementById('psbAngs3').value = "";
+    } catch (e) { 
+        Swal.fire("Error", e.message, "error"); 
+    }
+};
+
+
+    function loadDataPSB() {
+    const q = query(collection(db, `users/${currentUser.uid}/psb`), orderBy("createdAt", "desc"));
+    onSnapshot(q, (snap) => {
+        const body = document.getElementById('bodyPSB');
+        body.innerHTML = "";
+        const dataTemp = [];
+        let i = 1;
+
+        snap.forEach(d => {
+            const r = d.data();
+            dataTemp.push({ id: d.id, ...r });
+
+            const spp = parseFloat(r.spp) || 0;
+            const prasarana = parseFloat(r.prasarana) || 0;
+            const seragam = parseFloat(r.seragam) || 0;
+            const perlengkapan = parseFloat(r.perlengkapan) || 0;
+            const kegiatan = parseFloat(r.kegiatan) || 0;
+
+            const totalMurni = spp + prasarana + seragam + perlengkapan + kegiatan;
+            const diskon = parseFloat(r.diskon) || 0;
+            const totalAkhir = totalMurni - diskon;
+
+            const a1 = parseFloat(r.angs1) || 0;
+            const a2 = parseFloat(r.angs2) || 0;
+            const a3 = parseFloat(r.angs3) || 0;
+            const totalBayar = a1 + a2 + a3;
+            const sisaTagihan = totalAkhir - totalBayar;
+
+            // Logika Status Otomatis
+            const statusOtomatis = sisaTagihan <= 0 ? "LUNAS" : "BELUM LUNAS";
+            const statusColor = sisaTagihan <= 0 ? "bg-green-600 text-white" : "bg-red-100 text-red-700";
+
+            body.innerHTML += `
+                <tr class="border-b text-[10px] hover:bg-gray-50 uppercase font-medium">
+                    <td class="p-2 border text-center text-gray-400">${i++}</td>
+                    <td onclick="editPSB('${d.id}', 'tgl', '${r.tgl}', 'Tanggal')" class="p-2 border text-center cursor-pointer hover:bg-blue-100">${r.tgl}</td>
+                    <td onclick="editPSB('${d.id}', 'nama', '${r.nama}', 'Nama')" class="p-2 border font-bold text-blue-900 cursor-pointer hover:bg-blue-100">${r.nama}</td>
                     
-                    // Hitung Total Tanpa Formulir
-                    const total = (r.spp || 0) + (r.prasarana || 0) + (r.seragam || 0) + (r.perlengkapan || 0) + (r.angs1 || 0) + (r.angs2 || 0) + (r.angs3 || 0);
+                    <td class="p-2 border text-[9px] leading-tight bg-gray-50">
+                        <div class="flex justify-between"><span>SPP:</span> <span>${spp.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span>PRAS:</span> <span>${prasarana.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span>SERA:</span> <span>${seragam.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between"><span>PERL:</span> <span>${perlengkapan.toLocaleString('id-ID')}</span></div>
+                        <div class="flex justify-between font-bold border-t border-gray-300 mt-1 uppercase text-blue-800 italic"><span>Total:</span> <span>${totalMurni.toLocaleString('id-ID')}</span></div>
+                    </td>
+
+                    <td onclick="editPSB('${d.id}', 'diskon', ${r.diskon || 0}, 'Diskon')" class="p-2 border text-red-600 font-bold text-right cursor-pointer hover:bg-red-50 bg-red-50/30">${diskon > 0 ? diskon.toLocaleString('id-ID') : '-'}</td>
                     
-                    body.innerHTML += `
-                        <tr class="border-b text-[10px] hover:bg-gray-50 uppercase font-medium">
-                            <td class="p-2 border text-center text-gray-400">${i++}</td>
-                            <td class="p-2 border text-center">${r.tgl}</td>
-                            <td class="p-2 border font-bold text-blue-900">${r.nama}</td>
-                            <td class="p-2 border text-right">${r.spp > 0 ? r.spp.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right">${r.prasarana > 0 ? r.prasarana.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right">${r.seragam > 0 ? r.seragam.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right bg-orange-50 font-bold text-orange-800">${r.perlengkapan > 0 ? r.perlengkapan.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right bg-yellow-50/50">${r.angs1 > 0 ? r.angs1.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right bg-yellow-50/50">${r.angs2 > 0 ? r.angs2.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right bg-yellow-50/50">${r.angs3 > 0 ? r.angs3.toLocaleString('id-ID') : '-'}</td>
-                            <td class="p-2 border text-right font-black bg-green-100 text-green-900">${total.toLocaleString('id-ID')}</td>
-                            <td class="p-2 border text-[9px] normal-case text-gray-500 italic">${r.ket || '-'}</td>
-                            <td class="p-2 border text-center">
-                                <button onclick="hapusPSB('${d.id}')" class="text-red-400 hover:text-red-600">✕</button>
-                            </td>
-                        </tr>`;
-                });
-                window.dbPSB = dataTemp;
-            });
-        }
+                    <td class="p-2 border text-right font-black bg-green-50 text-green-900">${totalAkhir.toLocaleString('id-ID')}</td>
+
+                    <td class="p-2 border bg-yellow-50/50 w-44">
+                        <div class="flex flex-col gap-1">
+                            <div onclick="editPSB('${d.id}', 'angs1', ${r.angs1 || 0}, 'Angsuran 1')" class="border-b border-yellow-200 pb-1 cursor-pointer hover:text-blue-600">
+                                <div class="flex justify-between font-bold"><span>Ke-1:</span> <span>${a1 > 0 ? a1.toLocaleString('id-ID') : '-'}</span></div>
+                                <div class="text-[8px] text-gray-400 text-right italic">${r.tglAngs1 || ''}</div>
+                            </div>
+                            <div onclick="editPSB('${d.id}', 'angs2', ${r.angs2 || 0}, 'Angsuran 2')" class="border-b border-yellow-200 pb-1 cursor-pointer hover:text-blue-600">
+                                <div class="flex justify-between font-bold"><span>Ke-2:</span> <span>${a2 > 0 ? a2.toLocaleString('id-ID') : '-'}</span></div>
+                                <div class="text-[8px] text-gray-400 text-right italic">${r.tglAngs2 || ''}</div>
+                            </div>
+                            <div onclick="editPSB('${d.id}', 'angs3', ${r.angs3 || 0}, 'Angsuran 3')" class="cursor-pointer hover:text-blue-600">
+                                <div class="flex justify-between font-bold"><span>Ke-3:</span> <span>${a3 > 0 ? a3.toLocaleString('id-ID') : '-'}</span></div>
+                                <div class="text-[8px] text-gray-400 text-right italic">${r.tglAngs3 || ''}</div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td class="p-2 border text-right font-black bg-orange-50 text-orange-700">
+                        ${sisaTagihan.toLocaleString('id-ID')}
+                    </td>
+
+                    <td class="p-2 border text-center">
+                        <span class="px-2 py-1 rounded-full font-black text-[8px] ${statusColor}">${statusOtomatis}</span>
+                    </td>
+                    
+                    <td class="p-2 border text-center">
+                        <button onclick="hapusPSB('${d.id}')" class="text-red-300 hover:text-red-600">✕</button>
+                    </td>
+                </tr>`;
+        });
+        window.dbPSB = dataTemp;
+    });
+}
 
         window.hapusPSB = async (id) => { 
             if(confirm("Hapus data pendaftaran ini?")) {
@@ -145,6 +214,48 @@
                 Swal.fire('Berhasil!', `Data telah dipindah ke arsip: ${namaArsip}`, 'success');
             } catch (e) { Swal.fire("Gagal", e.message, "error"); }
         };
+
+        window.editPSB = async (id, field, currentVal, label) => {
+    // 1. Minta Nominal/Value seperti biasa
+    const { value: newVal } = await Swal.fire({
+        title: `Edit ${label}`,
+        input: 'text',
+        inputValue: currentVal.toLocaleString('id-ID'),
+        showCancelButton: true,
+    });
+
+    if (newVal !== undefined) {
+        let updateData = {};
+        const finalVal = (field === 'nama' || field === 'tgl' || field === 'status') 
+                         ? newVal.toUpperCase() 
+                         : cleanNumber(newVal);
+        
+        updateData[field] = finalVal;
+
+        // 2. LOGIKA TAMBAHAN: Jika yang diedit Angsuran, minta Tanggalnya juga
+        if (field.startsWith('angs') && finalVal > 0) {
+            const { value: tglAngs } = await Swal.fire({
+                title: `Tanggal Bayar ${label}`,
+                input: 'text',
+                placeholder: 'DD/MM/YYYY',
+                inputValue: new Date().toLocaleDateString('id-ID'), // Default tanggal hari ini
+                showCancelButton: true
+            });
+            if (tglAngs) {
+                const tglField = 'tgl' + field.charAt(0).toUpperCase() + field.slice(1); 
+                // Hasilnya jadi: tglAngs1, tglAngs2, dst
+                updateData[tglField] = tglAngs;
+            }
+        }
+
+        try {
+            await setDoc(doc(db, `users/${currentUser.uid}/psb`, id), updateData, { merge: true });
+            Swal.fire("Berhasil", "Data diperbarui", "success");
+        } catch (e) {
+            Swal.fire("Error", e.message, "error");
+        }
+    }
+};
     </script>
 </head>
 <body class="bg-gray-100 p-2 md:p-6 font-sans">
@@ -157,73 +268,82 @@
             </div>
         </div>
 
-        <form id="formPSB" class="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-3 mb-8 bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-inner">
-            <div class="col-span-1">
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Tanggal</label>
-                <input type="text" id="psbTgl" onkeyup="formatTanggal(this)" placeholder="DD/MM/YYYY" maxlength="10" class="w-full p-2 text-xs border border-blue-200 rounded-lg shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
-            </div>
-            <div class="col-span-2">
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Nama Anak</label>
-                <input type="text" id="psbNama" placeholder="NAMA LENGKAP" class="w-full p-2 text-xs border border-blue-200 rounded-lg uppercase shadow-sm focus:ring-2 focus:ring-blue-400 outline-none">
-            </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">SPP</label>
-                <input type="text" id="psbSpp" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
-            </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Prasarana</label>
-                <input type="text" id="psbPrasarana" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
-            </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Seragam</label>
-                <input type="text" id="psbSeragam" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-blue-200 rounded-lg text-right outline-none">
-            </div>
-            <div>
-                <label class="text-[9px] font-black uppercase text-orange-800 mb-1 block">Perlengkapan</label>
-                <input type="text" id="psbPerlengkapan" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-orange-200 rounded-lg text-right bg-orange-50 outline-none">
-            </div>
-            <div class="col-span-2 border-l border-blue-200 pl-3">
-                <label class="text-[8px] font-black text-amber-800 uppercase block text-center mb-1">Angsuran Kegiatan</label>
-                <div class="flex gap-1">
-                    <input type="text" id="psbAngs1" onkeyup="formatInput(this)" placeholder="1x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
-                    <input type="text" id="psbAngs2" onkeyup="formatInput(this)" placeholder="2x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
-                    <input type="text" id="psbAngs3" onkeyup="formatInput(this)" placeholder="3x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-amber-50/30">
-                </div>
-            </div>
-            <div class="col-span-1">
-                <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Keterangan</label>
-                <input type="text" id="psbKet" placeholder="..." class="w-full p-2 text-xs border border-blue-200 rounded-lg outline-none">
-            </div>
-            <div class="flex items-end">
-                <button type="button" onclick="simpanPSB()" class="w-full bg-blue-700 text-white py-2 rounded-lg font-black text-[10px] hover:bg-blue-800 shadow-lg transition-all uppercase tracking-widest">SIMPAN</button>
-            </div>
-        </form>
+      <form id="formPSB" class="grid grid-cols-2 md:grid-cols-6 lg:grid-cols-12 gap-3 mb-8 bg-blue-50 p-5 rounded-xl border border-blue-100 shadow-inner">
+    <div class="col-span-1">
+        <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Tanggal</label>
+        <input type="text" id="psbTgl" onkeyup="formatTanggal(this)" placeholder="DD/MM/YYYY" maxlength="10" class="w-full p-2 text-xs border border-blue-200 rounded-lg outline-none">
+    </div>
+    <div class="col-span-2">
+        <label class="text-[9px] font-black uppercase text-blue-800 mb-1 block">Nama Anak</label>
+        <input type="text" id="psbNama" placeholder="NAMA LENGKAP" class="w-full p-2 text-xs border border-blue-200 rounded-lg uppercase outline-none font-bold">
+    </div>
+    
+    <div>
+        <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block">SPP</label>
+        <input type="text" id="psbSpp" value="350.000" readonly class="w-full p-2 text-xs border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500 outline-none">
+    </div>
+    <div>
+        <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block">Prasarana</label>
+        <input type="text" id="psbPrasarana" value="1.200.000" readonly class="w-full p-2 text-xs border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500 outline-none">
+    </div>
+    <div>
+        <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block">Seragam</label>
+        <input type="text" id="psbSeragam" value="1.000.000" readonly class="w-full p-2 text-xs border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500 outline-none">
+    </div>
+    <div>
+        <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block">Perlengkapan</label>
+        <input type="text" id="psbPerlengkapan" value="1.000.000" readonly class="w-full p-2 text-xs border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500 outline-none">
+    </div>
+    <div>
+        <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block">Kegiatan</label>
+        <input type="text" id="psbKegiatan" value="1.500.000" readonly class="w-full p-2 text-xs border border-gray-200 rounded-lg text-right bg-gray-100 text-gray-500 outline-none">
+    </div>
 
-        <div class="overflow-x-auto shadow-2xl rounded-xl border border-gray-300">
-            <table class="w-full border-collapse">
-                <thead>
-                    <tr class="bg-blue-900 text-white text-[9px] uppercase tracking-wider">
-                        <th rowspan="2" class="p-3 border-r border-blue-800 w-10">No</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800 w-24">Tanggal</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800">Nama Anak</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800">SPP</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800">Prasarana</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800">Seragam</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800 bg-orange-800">Perlengkapan</th>
-                        <th colspan="3" class="p-2 border-b border-blue-800 bg-amber-700 text-center">Angsuran Kegiatan</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800 bg-green-800">Total</th>
-                        <th rowspan="2" class="p-3 border-r border-blue-800">Keterangan</th>
-                        <th rowspan="2" class="p-3 w-8"></th>
-                    </tr>
-                    <tr class="bg-amber-600 text-white text-[8px] uppercase">
-                        <th class="p-2 border-r border-amber-500 w-20">Ke-1</th>
-                        <th class="p-2 border-r border-amber-500 w-20">Ke-2</th>
-                        <th class="p-2 border-r border-amber-500 w-20">Ke-3</th>
-                    </tr>
-                </thead>
-                <tbody id="bodyPSB" class="bg-white"></tbody>
-            </table>
+    <div class="col-span-2 border-l border-blue-200 pl-3">
+        <label class="text-[8px] font-black text-amber-800 uppercase block text-center mb-1">Angsuran</label>
+        <div class="flex gap-1">
+            <input type="text" id="psbAngs1" onkeyup="formatInput(this)" placeholder="1x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-white">
+            <input type="text" id="psbAngs2" onkeyup="formatInput(this)" placeholder="2x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-white">
+            <input type="text" id="psbAngs3" onkeyup="formatInput(this)" placeholder="3x" class="w-1/3 p-2 text-[10px] border border-amber-200 rounded-lg text-right outline-none bg-white">
         </div>
+    </div>
+    <div>
+        <label class="text-[9px] font-black uppercase text-red-800 mb-1 block">Diskon</label>
+        <input type="text" id="psbDiskon" onkeyup="formatInput(this)" placeholder="0" class="w-full p-2 text-xs border border-red-300 rounded-lg outline-none font-bold text-red-600 bg-white">
+    </div>
+    <div> 
+        <label class="text-[9px] font-black uppercase text-gray-800 mb-1 block">Status</label>
+        <div class="col-span-1"> 
+    <label class="text-[9px] font-black uppercase text-gray-400 mb-1 block italic text-center">Info</label>
+    <div class="text-[9px] font-bold text-blue-500 py-2 italic text-center bg-blue-100/50 rounded-lg border border-blue-200">
+        AUTO-STATUS
+    </div>
+</div>
+    </div>
+    <div class="flex items-end">
+        <button type="button" onclick="simpanPSB()" class="w-full bg-blue-700 text-white py-2 rounded-lg font-black text-[10px] hover:bg-blue-800 shadow-lg transition-all uppercase tracking-widest">SIMPAN</button>
+    </div>
+</form>
+
+       <div class="overflow-x-auto shadow-2xl rounded-xl border border-gray-300">
+    <table class="w-full border-collapse">
+        <thead>
+            <tr class="bg-blue-900 text-white text-[9px] uppercase tracking-wider">
+                <th class="p-3 border-r border-blue-800 w-10">No</th>
+                <th class="p-3 border-r border-blue-800 w-24">Tanggal</th>
+                <th class="p-3 border-r border-blue-800">Nama Anak</th>
+                <th class="p-3 border-r border-blue-800 w-48">Rincian Biaya Mutlak</th>
+                <th class="p-3 border-r border-blue-800 bg-red-800">Diskon</th>
+                <th class="p-3 border-r border-blue-800 bg-green-800">Wajib Bayar</th>
+                <th class="p-3 border-r border-blue-800 bg-amber-700">Histori Angsuran</th>
+                <th class="p-3 border-r border-blue-800 bg-orange-700">Sisa Tagihan</th>
+                <th class="p-3 border-r border-blue-800">Status</th>
+                <th class="p-3 w-8"></th>
+            </tr>
+        </thead>
+        <tbody id="bodyPSB" class="bg-white"></tbody>
+    </table>
+</div>
     </div>
 </body>
 </html>
