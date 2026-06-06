@@ -111,6 +111,15 @@ window.simpanPSB = async () => {
         const dataTemp = [];
         let i = 1;
 
+        // --- TAMBAHKAN VARIABEL INI ---
+        let grandTotalMurni = 0;
+        let grandTotalDiskon = 0;
+        let grandTotalWajib = 0;
+        let grandTotalAngs1 = 0;
+        let grandTotalAngs2 = 0;
+        let grandTotalAngs3 = 0;
+        let grandTotalSisa = 0;
+
         snap.forEach(d => {
             const r = d.data();
             dataTemp.push({ id: d.id, ...r });
@@ -131,7 +140,15 @@ window.simpanPSB = async () => {
             const totalBayar = a1 + a2 + a3;
             const sisaTagihan = totalAkhir - totalBayar;
 
-            // Logika Status Otomatis
+            // --- TAMBAHKAN AKUMULASI INI ---
+            grandTotalMurni += totalMurni;
+            grandTotalDiskon += diskon;
+            grandTotalWajib += totalAkhir;
+            grandTotalAngs1 += a1;
+            grandTotalAngs2 += a2;
+            grandTotalAngs3 += a3;
+            grandTotalSisa += sisaTagihan;
+
             const statusOtomatis = sisaTagihan <= 0 ? "LUNAS" : "BELUM LUNAS";
             const statusColor = sisaTagihan <= 0 ? "bg-green-600 text-white" : "bg-red-100 text-red-700";
 
@@ -183,6 +200,16 @@ window.simpanPSB = async () => {
                     </td>
                 </tr>`;
         });
+
+        // --- TAMBAHKAN OPER OPER DATA INI KE FOOTER ---
+        document.getElementById('footTotalMurni').innerText = grandTotalMurni.toLocaleString('id-ID');
+        document.getElementById('footTotalDiskon').innerText = grandTotalDiskon > 0 ? grandTotalDiskon.toLocaleString('id-ID') : '-';
+        document.getElementById('footTotalWajib').innerText = grandTotalWajib.toLocaleString('id-ID');
+        document.getElementById('footTotalAngs1').innerText = grandTotalAngs1.toLocaleString('id-ID');
+        document.getElementById('footTotalAngs2').innerText = grandTotalAngs2.toLocaleString('id-ID');
+        document.getElementById('footTotalAngs3').innerText = grandTotalAngs3.toLocaleString('id-ID');
+        document.getElementById('footTotalSisa').innerText = grandTotalSisa.toLocaleString('id-ID');
+
         window.dbPSB = dataTemp;
     });
 }
@@ -342,6 +369,26 @@ window.simpanPSB = async () => {
             </tr>
         </thead>
         <tbody id="bodyPSB" class="bg-white"></tbody>
+                <tfoot>
+                    <tr class="bg-gray-100 text-gray-800 text-[10px] font-black border-t-2 border-blue-900 uppercase">
+                        <td colspan="3" class="p-3 border text-center font-black text-blue-900 bg-blue-50">TOTAL KESELURUHAN:</td>
+                        <td class="p-3 border text-right text-blue-900 italic font-bold">
+                            <span id="footTotalMurni">0</span>
+                        </td>
+                        <td id="footTotalDiskon" class="p-3 border text-right text-red-600 bg-red-50">0</td>
+                        <td id="footTotalWajib" class="p-3 border text-right text-green-900 bg-green-100">0</td>
+                        <td class="p-3 border bg-amber-50 text-[9px]">
+                            <div class="flex flex-col gap-1">
+                                <div class="flex justify-between"><span>Tot Ke-1:</span><span id="footTotalAngs1" class="font-black">0</span></div>
+                                <div class="flex justify-between"><span>Tot Ke-2:</span><span id="footTotalAngs2" class="font-black">0</span></div>
+                                <div class="flex justify-between border-t border-amber-200 pt-0.5"><span>Tot Ke-3:</span><span id="footTotalAngs3" class="font-black">0</span></div>
+                            </div>
+                        </td>
+                        <td id="footTotalSisa" class="p-3 border text-right bg-orange-100 text-orange-800">0</td>
+                        <td colspan="2" class="p-3 border bg-gray-50"></td>
+                    </tr>
+                </tfoot>
+            </table>
     </table>
 </div>
     </div>
