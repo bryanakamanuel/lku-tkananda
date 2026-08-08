@@ -158,14 +158,18 @@
 }
 
         // Simpan ke Firebase
+       // Simpan ke Firebase
         window.simpanKeArsip = async () => {
-            const namaArsip = document.getElementById('judulArsip').value.toUpperCase().trim();
-            if(!namaArsip) return alert("Mohon isi Judul Rekap!");
+            const judulInput = document.getElementById('judulArsip').value.toUpperCase().trim();
+            if(!judulInput) return alert("Mohon isi Judul Rekap!");
             if(!confirm("Simpan rekap ke arsip?")) return;
+
+            // PERBAIKAN: Bersihkan karakter '/' dari namaArsip agar tidak merusak path Firestore
+            const namaArsip = judulInput.replace(/\//g, "-");
 
             try {
                 await setDoc(doc(db, "users/" + currentUID + "/arsip", namaArsip), { 
-                    nama: namaArsip, 
+                    nama: judulInput, // Tetap menyimpan judul asli yang mengandung '/' di dalam data dokumen
                     updatedAt: Date.now() 
                 }, { merge: true });
 
